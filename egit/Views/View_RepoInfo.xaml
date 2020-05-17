@@ -1,0 +1,21 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="200"
+             x:Class="egit.Views.View_RepoInfo">
+  <StackPanel Orientation="Vertical">
+    <StackPanel Orientation="Horizontal">
+      <TextBlock Width="40">Repo</TextBlock>
+      <ComboBox Width="150"></ComboBox>
+      <TextBlock Width="80">1/1 Branch</TextBlock>
+      <ComboBox Width="150"></ComboBox>
+      <TextBlock Width="40">Filter</TextBlock>
+      <TextBox Width="200"></TextBox>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal">
+      <TextBlock Width="40">Path</TextBlock>
+      <TextBox Width="400"></TextBox>
+    </StackPanel>
+  </StackPanel>
+</UserControl>
