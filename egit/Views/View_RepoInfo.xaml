@@ -7,9 +7,22 @@
   <StackPanel Orientation="Vertical">
     <StackPanel Orientation="Horizontal">
       <TextBlock Width="40">Repo</TextBlock>
-      <ComboBox Width="150"></ComboBox>
+      <ComboBox Width="150" Items="{Binding Property}" SelectedItem="{Binding SimpleStringProperty, Mode=TwoWay}" />
       <TextBlock Width="80">1/1 Branch</TextBlock>
-      <ComboBox Width="150"></ComboBox>
+      <ComboBox Width="150" x:Name="CBTest">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+        <!---->
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Name}" FontFamily="{Binding}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+        -->
+      </ComboBox>
       <TextBlock Width="40">Filter</TextBlock>
       <TextBox Width="200"></TextBox>
     </StackPanel>

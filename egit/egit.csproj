@@ -14,18 +14,45 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Remove="Views\View_CommitFileList.xaml" />
+    <AvaloniaResource Remove="Views\View_CommitList.xaml" />
+    <AvaloniaResource Remove="Views\View_FileTree.xaml" />
     <AvaloniaResource Remove="Views\View_RepoInfo.xaml" />
+    <AvaloniaResource Remove="Views\View_CommitInfo.xaml" />
+    <AvaloniaResource Remove="Views\View_UserList.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\View_CommitFileList.xaml" />
+    <None Remove="Views\View_CommitList.xaml" />
+    <None Remove="Views\View_FileTree.xaml" />
     <None Remove="Views\View_RepoInfo.xaml" />
+    <None Remove="Views\View_CommitInfo.xaml" />
+    <None Remove="Views\View_UserList.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.9.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.9.0" />
-    <PackageReference Include="Avalonia.ReactiveUI" Version="0.9.0" />
+    <PackageReference Include="Avalonia" Version="0.9.10" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="0.9.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.9.10" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.9.10" />
+    <PackageReference Include="LibGit2Sharp" Version="0.26.2" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Views\View_RepoInfo.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\View_CommitInfo.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\View_CommitFileList.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\View_CommitList.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\View_FileTree.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\View_UserList.xaml">
       <Generator>MSBuild:Compile</Generator>
     </EmbeddedResource>
   </ItemGroup>
