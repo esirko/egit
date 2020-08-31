@@ -46,7 +46,8 @@ namespace egit.ViewModels
 
                 if (_SelectedRepoOrOption.EndsWith("..."))
                 {
-
+                    var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("TODO", "TODO: need ability to browse to a new repo");
+                    messageBoxStandardWindow.Show();
                 }
                 else
                 {
