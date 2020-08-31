@@ -30,7 +30,7 @@
 
     <DockPanel DockPanel.Dock="Top">
       <!-- Repo info with the two rows of combo boxes and text boxes at the top -->
-      <views:View_RepoInfo />
+      <views:View_RepoInfo Content="{Binding RepoInfo}"/>
     </DockPanel>
 
     <DockPanel DockPanel.Dock="Top">

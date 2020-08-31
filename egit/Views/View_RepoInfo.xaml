@@ -6,8 +6,18 @@
              x:Class="egit.Views.View_RepoInfo">
   <StackPanel Orientation="Vertical">
     <StackPanel Orientation="Horizontal">
+
       <TextBlock Width="40">Repo</TextBlock>
-      <ComboBox Width="150" Items="{Binding Property}" SelectedItem="{Binding SimpleStringProperty, Mode=TwoWay}" />
+      <ComboBox x:Name="ComboBoxRepo" Width="150" Items="{Binding ReposWithOptions}" SelectedItem="{Binding SelectedRepoOrOption}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <DockPanel>
+              <TextBlock Text="{Binding}" />
+            </DockPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
       <TextBlock Width="80">1/1 Branch</TextBlock>
       <ComboBox Width="150" x:Name="CBTest">
         <ComboBox.ItemTemplate>
@@ -15,16 +25,11 @@
             <TextBlock Text="{Binding}" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
-        <!---->
-        <ComboBox.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding Name}" FontFamily="{Binding}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-        -->
       </ComboBox>
+
       <TextBlock Width="40">Filter</TextBlock>
       <TextBox Width="200"></TextBox>
+
     </StackPanel>
     <StackPanel Orientation="Horizontal">
       <TextBlock Width="40">Path</TextBlock>

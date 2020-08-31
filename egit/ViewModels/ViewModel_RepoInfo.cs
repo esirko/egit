@@ -2,27 +2,62 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
+using SharpDX.Direct2D1;
+using System.Linq;
+using DynamicData;
+using Avalonia.Controls;
+using ReactiveUI;
+using System.Reactive;
 
 namespace egit.ViewModels
 {
     public class ViewModel_RepoInfo : ViewModelBase
     {
-        public ObservableCollection<string> Repos { get { return new ObservableCollection<string>(new List<string>() { "abc", "def" }); } }
+        public ViewModel_RepoInfo()
+        {
+            Repos = Settings.Default.LocalRepos?.Cast<string>().ToList();
+            _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
+            Initialized = true;
+        }
 
-        private List<String> _property;
-        public List<String> Property
+        private List<string> Repos;
+        private bool Initialized = false;
+
+        public List<string> ReposWithOptions
         {
             get
             {
-                return new List<string>() { "string1", "string2" };
-            }
-            set {
-                _property = value;
+                List<string> temp = Repos.ToList();
+                temp.Add("Other repo on disk...");
+                return temp;
             }
         }
 
-        public string SimpleStringProperty { get; set; }
+        private string _SelectedRepoOrOption;
+        public string SelectedRepoOrOption
+        {
+            get
+            {
+                return _SelectedRepoOrOption;
+            }
+            set
+            {
+                _SelectedRepoOrOption = value;
 
-        public IEnumerable<string> Repos2 { get { return new List<string>() { "abc", "def" }; } }
+                if (_SelectedRepoOrOption.EndsWith("..."))
+                {
+
+                }
+                else
+                {
+                    if (Initialized)
+                    {
+                        Settings.Default.LastSelectedLocalRepo = _SelectedRepoOrOption;
+                        Settings.Default.Save();
+                    }
+                }
+            }
+        }
+
     }
 }
