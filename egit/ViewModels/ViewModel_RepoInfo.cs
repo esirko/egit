@@ -8,6 +8,7 @@ using DynamicData;
 using Avalonia.Controls;
 using ReactiveUI;
 using System.Reactive;
+using egit.Engine;
 
 namespace egit.ViewModels
 {
@@ -18,10 +19,14 @@ namespace egit.ViewModels
             Repos = Settings.Default.LocalRepos?.Cast<string>().ToList();
             _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
             Initialized = true;
+            GitEngine.Get().InitializeViewModel(this);
+            GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
         }
 
         private List<string> Repos;
         private bool Initialized = false;
+
+        public GitEngine GitRepoEngine { get { return GitEngine.Get();  } }
 
         public List<string> ReposWithOptions
         {
@@ -55,10 +60,10 @@ namespace egit.ViewModels
                     {
                         Settings.Default.LastSelectedLocalRepo = _SelectedRepoOrOption;
                         Settings.Default.Save();
+                        GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
                     }
                 }
             }
         }
-
     }
 }

@@ -19,16 +19,10 @@
       </ComboBox>
 
       <TextBlock Width="80">1/1 Branch</TextBlock>
-      <ComboBox Width="150" x:Name="CBTest">
-        <ComboBox.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
+      <ComboBox Width="150" DataContext="{Binding GitRepoEngine}" Items="{Binding Branches}" SelectedItem="{Binding SelectedBranch}"/>
 
       <TextBlock Width="40">Filter</TextBlock>
-      <TextBox Width="200"></TextBox>
+      <TextBox Width="200" DataContext="{Binding GitRepoEngine}" Text="{Binding Counter}"></TextBox>
 
     </StackPanel>
     <StackPanel Orientation="Horizontal">
