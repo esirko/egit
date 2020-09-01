@@ -37,11 +37,11 @@
       <Grid ColumnDefinitions="2*,4,5*">
         <Grid RowDefinitions="3*,4,4*" Grid.Column="0">
           <!-- File tree view -->
-          <views:View_FileTree Grid.Row="0" />
+          <views:View_FileTree Grid.Row="0" Content="{Binding FileTree}" />
             
           <GridSplitter Grid.Row="1" />
           <!-- List of users -->
-          <views:View_UserList Grid.Row="2" />
+          <views:View_UserList Grid.Row="2" Content="{Binding UserList}"/>
             
         </Grid>
         <GridSplitter Grid.Column="1" />
@@ -52,18 +52,18 @@
               
             <GridSplitter Grid.Column="1" />
             <!-- Secondary commit list view -->
-            <views:View_CommitList Grid.Column="2" />
+            <views:View_CommitList Grid.Column="2" Content="{Binding SecondaryCommitList}"/>
 
           </Grid>
           <GridSplitter Grid.Row="1" />
           <Grid RowDefinitions="40,4,*" Grid.Row="2">
             <!-- Commit information (narrow bar in middle) -->
-            <views:View_CommitInfo Grid.Row="0">
+            <views:View_CommitInfo Grid.Row="0" Content="{Binding CommitInfo}">
               
             </views:View_CommitInfo>
             <GridSplitter Grid.Row="1" />
             <!-- Commit file details -->
-            <views:View_CommitFileList Grid.Row="2" />
+            <views:View_CommitFileList Grid.Row="2"  Content="{Binding CommitFileList}"/>
           </Grid>
         </Grid>
       </Grid>

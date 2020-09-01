@@ -2,9 +2,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:egit.Models"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_FileTree">
   <!-- https://github.com/kekekeks/avalonia-net-core-example -->
   <!-- https://www.nequalsonelifestyle.com/2019/06/18/avalonia-treeview-tutorial/ -->
-  <TreeView Items="{Binding FileTreeItems}"></TreeView>
+  <TreeView Items="{Binding RootDirectoriesAndFiles}">
+    <TreeView.DataTemplates>
+      <TreeDataTemplate DataType="models:HackyFolder" ItemsSource="{Binding SortedObservableEntries}">
+        <TextBlock Foreground="Red" Text="{Binding Name}" />
+      </TreeDataTemplate>
+      <DataTemplate DataType="models:HackyFile">
+        <TextBlock Text="{Binding Name}" />
+      </DataTemplate>
+    </TreeView.DataTemplates>
+  </TreeView>
 </UserControl>

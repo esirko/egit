@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text;
 using egit.Engine;
 using egit.Models;
@@ -8,23 +10,35 @@ namespace egit.ViewModels
 {
     public class ViewModel_CommitList : ViewModelBase
     {
-        public CommitViewEnumerable Commits { get
-            {
-                return GitEngine.Get().CurrentViewOfCommits;
-            } }
+        public ViewModel_CommitList(int isSecondary)
+        {
+            IsPrimary = isSecondary == 0;
+            IsSecondary = isSecondary == 1;
+        }
 
-        /*
-        public List<string> Commits
+        public GitEngine GitRepoEngine { get { return GitEngine.Get(); } }
+
+        public CommitViewEnumerableWrapper CommitList
         {
             get
             {
-                List<string> temp = new List<string>() { "1", "2", "3" };
-                temp.Add("Other repo on disk...");
-                return temp;
+                if (IsPrimary)
+                {
+                    return GitRepoEngine.CurrentViewOfCommits;
+                }
+                else if (IsSecondary)
+                {
+                    return GitRepoEngine.CurrentlyDisplayedFeatureBranch;
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
-        */
 
+        private readonly bool IsPrimary;
+        private readonly bool IsSecondary;
 
     }
 }

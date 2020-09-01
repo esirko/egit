@@ -18,6 +18,26 @@ using MessageBox.Avalonia;
 
 namespace egit.Engine
 {
+    public class CommitViewEnumerableWrapper : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        private CommitViewEnumerable _CurrentViewOfCommits = new CommitViewEnumerable(new List<Changelist>());
+        public CommitViewEnumerable Commits
+        {
+            get { return _CurrentViewOfCommits; }
+            set
+            {
+                _CurrentViewOfCommits = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public class GitEngine : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -43,7 +63,8 @@ namespace egit.Engine
 
         public List<string> MainCommitList { get { return new List<string>() { "abc", "cexf" }; } }
 
-        public CommitViewEnumerable CurrentViewOfCommits { get; set; }
+        public CommitViewEnumerableWrapper CurrentViewOfCommits = new CommitViewEnumerableWrapper();
+        public CommitViewEnumerableWrapper CurrentlyDisplayedFeatureBranch = new CommitViewEnumerableWrapper();
 
 
         public int Counter
@@ -75,6 +96,7 @@ namespace egit.Engine
                     Repo.Dispose();
                     Repo = null;
                     CurrentSelectedBranch = null;
+                    MasterBranchCommits.Clear();
                 }
 
                 CurrentRepoPath = repoPath;
@@ -88,7 +110,7 @@ namespace egit.Engine
                     }
                     else
                     {
-                        MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}");
+                        MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}").Show();
                     }
                 }
 
@@ -96,14 +118,18 @@ namespace egit.Engine
                 Task t = new Task(async () => { await DoStuffAsync(); });
                 t.Start();
 
+                // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
+                // was in the old code. This propagated to the variables NeedToReloadDiffCache.
                 Task t2 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
                 Task t3 = new Task(async () => { await TraverseHeadBranchAsync(); });
                 Task t4 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
                 Task t5 = new Task(async () => { await DoGitStatusAsync(); });
+                Task t6 = new Task(async () => { await TraverseHistoryFSAsync(); });
                 t2.Start();
                 t3.Start();
                 t4.Start();
                 t5.Start();
+                t6.Start();
             }
         }
 
@@ -143,6 +169,8 @@ namespace egit.Engine
         {
             CachedStage.Clear();
             CachedWorkingDirectory.Clear();
+
+            CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(DateTime.MinValue);
 
             foreach (var item in Repo.RetrieveStatus())
             {
@@ -184,6 +212,14 @@ namespace egit.Engine
                 await Task.Yield();
             }
 
+            ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
+            CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
+            {
+                RefreshListViewCommits2();
+                //RefreshListOfDiffFiles(); // TODO: restore this
+            }
+
             LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
         }
 
@@ -194,6 +230,7 @@ namespace egit.Engine
                 return;
             }
 
+            CurrentlyTraversingHeadBranch = true;
             int k = 0;
             int nn = 0;
 
@@ -296,6 +333,7 @@ namespace egit.Engine
             }
 
             FlushPendingMasterCommits(ref nn, ref k, ref pendingMasterCommits);
+            CurrentlyTraversingHeadBranch = false;
         }
 
         private async Task AnalyzeHeadBranchCommitsAsync()
@@ -339,7 +377,7 @@ namespace egit.Engine
 
                 i0 = NumCommitsAnalyzed;
 
-                if (NumCommitsAnalyzed == MasterBranchCommits.Count - 1) // TODO: what did this mean? && !Model.MasterBranchTraverser_IsBusy)
+                if (!CurrentlyTraversingHeadBranch && NumCommitsAnalyzed == MasterBranchCommits.Count - 1)
                 {
                     break;
                 }
@@ -350,6 +388,48 @@ namespace egit.Engine
             CommitAnalyzerStopwatch.Stop();
         }
 
+        private Task TraverseHistoryFSAsync()
+        {
+            /*
+            List<Tuple<TreeNode, TreeNode>> pendingTreeNodeAdditions = new List<Tuple<TreeNode, TreeNode>>();
+            List<string> pendingUserAdditions = new List<string>();
+            TraverseHistoryFS(rootNode, HistoryFS.BaseFolder, pendingTreeNodeAdditions);
+            */
+
+            return Task.CompletedTask;
+        }
+
+        /*
+        private void TraverseHistoryFS(TreeNode node, HackyFileOrFolder hackyFileOrFolder, List<Tuple<TreeNode, TreeNode>> pendingTreeNodeAdditions)
+        {
+            // This now happens on a worker thread.
+            for (int i = 0; i < hackyFileOrFolder.Entries.Count; i++)
+            {
+                string path = hackyFileOrFolder.Entries.Keys[i];
+                TreeNode[] foundNodes = node.Nodes.Find(path, false);
+                TreeNode subnode = foundNodes.Length > 0 ? foundNodes[0] : null;
+                bool preexisting = subnode != null;
+
+                if (!preexisting)
+                {
+                    subnode = new TreeNode(path);
+                    subnode.Tag = hackyFileOrFolder.Entries[path]; // I get an exception on this line sometimes
+                    subnode.Name = path;
+                }
+
+                HackyFileOrFolder next = hackyFileOrFolder.Entries[path];
+
+                TraverseHistoryFS(subnode, next, pendingTreeNodeAdditions);
+
+                if (!preexisting)
+                {
+                    pendingTreeNodeAdditions.Add(new Tuple<TreeNode, TreeNode>(node, subnode));
+                }
+            }
+        }
+*/
+
+
 
         private void FlushPendingMasterCommits(ref int nn, ref int k, ref List<Commit> pendingMasterCommits)
         {
@@ -358,7 +438,7 @@ namespace egit.Engine
                 Commit c = pendingMasterCommits[i];
                 MasterBranchCommits.Add(c);
 
-                CurrentViewOfCommits = new CommitViewEnumerable(MasterBranchCommits, true);
+                CurrentViewOfCommits.Commits = new CommitViewEnumerable(MasterBranchCommits, true);
 
                 nn++;
             }
@@ -469,7 +549,94 @@ namespace egit.Engine
             stream.Close();
         }
 
+        private void RefreshListViewCommits2()
+        {
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
+            {
+                CurrentlyDisplayedFeatureBranch.Commits = new CommitViewEnumerable(ModelTransient.Changelists);
+            }
+            else
+            {
+                CurrentlyDisplayedFeatureBranch.Commits = new CommitViewEnumerable(GetFeatureBranchCommits());
+            }
+        }
 
+        internal List<Commit> GetFeatureBranchCommits()
+        {
+            List<Commit> featureBranchCommits = new List<Commit>();
+
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.Commit)
+            {
+                featureBranchCommits.Add(CurrentDiffCommit1.Commit);
+
+                int i = 0;
+                while (true)
+                {
+                    List<Commit> parents = featureBranchCommits[i].Parents.ToList();
+                    if (parents.Count == 2)
+                    {
+                        // Expect one of the parents to be on the master branch, and this is a remerge on the feature branch
+                        bool m0 = MasterBranchCommits.Contains(parents[0]);
+                        bool m1 = MasterBranchCommits.Contains(parents[1]);
+                        if (m0 && !m1)
+                        {
+                            featureBranchCommits.Add(parents[1]);
+                        }
+                        else if (m1 && !m0)
+                        {
+                            featureBranchCommits.Add(parents[0]);
+                        }
+                        else
+                        {
+                            //thereWasAProblem = true;
+                            Console.WriteLine("Merge of two non-master branches... this means we can't present one of the branches yet");
+                            featureBranchCommits.Add(parents[0]);
+                            //break;
+                        }
+                    }
+                    else
+                    {
+                        if (parents.Count == 0)
+                        {
+                            if (MasterBranchCommits.Last() == CurrentDiffCommit1.Commit)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                MessageBoxManager.GetMessageBoxStandardWindow("", "Got to here, avoiding a crash? Need to investigate this. This just happened twice on 7-12 and seems to have just started... The next MessageBox will have more info.").Show();
+                                MessageBoxManager.GetMessageBoxStandardWindow("", "May be because there are zero parents to featureBranch Commit " + i + " " + featureBranchCommits[i].Id).Show();
+                            }
+                            break;
+                        }
+                        if (parents[0] == null)
+                        {
+                            break; // avoid a crash if you hit the end of the line
+                        }
+                        if (MasterBranchCommits.Contains(parents[0]))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            featureBranchCommits.Add(parents[0]);
+                        }
+                    }
+                    i++;
+
+                    if (featureBranchCommits.Count > 100)
+                    {
+                        break; // TODO: investigate why sometimes the feature branch traversal is unbounded. 
+                    }
+                }
+            }
+            else if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
+            {
+
+            }
+
+            return featureBranchCommits;
+        }
 
 
         internal Branch CurrentSelectedBranch = null;
@@ -493,9 +660,12 @@ namespace egit.Engine
         internal bool NeedToReloadDiffCache = false;
         internal Stopwatch CommitAnalyzerStopwatch = new Stopwatch();
         internal int NumCommitsAnalyzed = 0;
-        internal FileSystem HistoryFS = new FileSystem();
-        internal FileSystem UserFS = new FileSystem(); // hijacking the FileSystem class to store user commits
+        public FileSystem HistoryFS = new FileSystem();
+        public FileSystem UserFS = new FileSystem(); // hijacking the FileSystem class to store user commits
 
+        internal Snapshot CurrentDiffCommit0;
+        internal Snapshot CurrentDiffCommit1;
+        internal ModelTransient ModelTransient = new ModelTransient();
 
 
         internal Repository Repo;
@@ -505,6 +675,8 @@ namespace egit.Engine
         int delayTime = 2000;
         private int _Counter;
         private ViewModel_RepoInfo RepoInfo;
+
+        bool CurrentlyTraversingHeadBranch = false;
 
     }
 }

@@ -72,5 +72,17 @@ namespace egit {
                 this["DiffCacheDir"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\projects\\Temp\\egitDiffs")]
+        public string TempDiffFileDir {
+            get {
+                return ((string)(this["TempDiffFileDir"]));
+            }
+            set {
+                this["TempDiffFileDir"] = value;
+            }
+        }
     }
 }

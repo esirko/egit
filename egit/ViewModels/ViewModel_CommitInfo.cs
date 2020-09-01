@@ -4,7 +4,7 @@ using System.Text;
 
 namespace egit.ViewModels
 {
-    class ViewModel_CommitInfo : ViewModelBase
+    public class ViewModel_CommitInfo : ViewModelBase
     {
     }
 }

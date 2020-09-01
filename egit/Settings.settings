@@ -18,5 +18,8 @@
     <Setting Name="DiffCacheDir" Type="System.String" Scope="User">
       <Value Profile="(Default)">C:\projects\Temp</Value>
     </Setting>
+    <Setting Name="TempDiffFileDir" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\projects\Temp\egitDiffs</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
