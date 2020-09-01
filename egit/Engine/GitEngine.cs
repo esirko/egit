@@ -41,7 +41,9 @@ namespace egit.Engine
         }
 
 
+        public List<string> MainCommitList { get { return new List<string>() { "abc", "cexf" }; } }
 
+        public CommitViewEnumerable CurrentViewOfCommits { get; set; }
 
 
         public int Counter
@@ -356,6 +358,8 @@ namespace egit.Engine
                 Commit c = pendingMasterCommits[i];
                 MasterBranchCommits.Add(c);
 
+                CurrentViewOfCommits = new CommitViewEnumerable(MasterBranchCommits, true);
+
                 nn++;
             }
             pendingMasterCommits.Clear();
@@ -491,6 +495,7 @@ namespace egit.Engine
         internal int NumCommitsAnalyzed = 0;
         internal FileSystem HistoryFS = new FileSystem();
         internal FileSystem UserFS = new FileSystem(); // hijacking the FileSystem class to store user commits
+
 
 
         internal Repository Repo;

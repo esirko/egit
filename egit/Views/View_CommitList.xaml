@@ -5,7 +5,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_CommitList">
   <!-- https://www.nequalsonelifestyle.com/2019/06/13/avalonia-datagrid-getting-started/ -->
-  <DataGrid>
+  <DataGrid AutoGenerateColumns="True" Items="{Binding Commits}">
     
   </DataGrid> 
 </UserControl>
