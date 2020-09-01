@@ -12,5 +12,11 @@
     <Setting Name="LastSelectedLocalRepo" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="MaxConsecutiveProblems" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="DiffCacheDir" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\projects\Temp</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

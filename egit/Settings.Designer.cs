@@ -48,5 +48,29 @@ namespace egit {
                 this["LastSelectedLocalRepo"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int MaxConsecutiveProblems {
+            get {
+                return ((int)(this["MaxConsecutiveProblems"]));
+            }
+            set {
+                this["MaxConsecutiveProblems"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\projects\\Temp")]
+        public string DiffCacheDir {
+            get {
+                return ((string)(this["DiffCacheDir"]));
+            }
+            set {
+                this["DiffCacheDir"] = value;
+            }
+        }
     }
 }
