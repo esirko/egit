@@ -5,6 +5,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using egit.Engine;
 using egit.Models;
+using egit.Views;
+using LibGit2Sharp;
 
 namespace egit.ViewModels
 {
@@ -34,6 +36,18 @@ namespace egit.ViewModels
                 {
                     return null;
                 }
+            }
+        }
+
+        internal void RegisterView(View_CommitList view_CommitList)
+        {
+            if (IsPrimary)
+            {
+                GitRepoEngine.CurrentViewOfCommits.RegisterCommitList(view_CommitList);
+            }
+            else if (IsSecondary)
+            {
+                GitRepoEngine.CurrentlyDisplayedFeatureBranch.RegisterCommitList(view_CommitList);
             }
         }
 

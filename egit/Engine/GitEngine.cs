@@ -11,36 +11,29 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using egit.Models;
 using egit.ViewModels;
+using egit.Views;
 using LibGit2Sharp;
 using MessageBox.Avalonia;
 
 namespace egit.Engine
 {
-    public class CommitViewEnumerableWrapper : INotifyPropertyChanged
-    {
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-        private CommitViewEnumerable _CurrentViewOfCommits = new CommitViewEnumerable(new List<Changelist>());
-        public CommitViewEnumerable Commits
-        {
-            get { return _CurrentViewOfCommits; }
-            set
-            {
-                _CurrentViewOfCommits = value;
-                OnPropertyChanged();
-            }
-        }
-    }
-
     public class GitEngine : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
+
+        /*
+        internal void RegisterCommitLists(View_CommitList mainCommitList, View_CommitList secondaryCommitList)
+        {
+            // TODO: I have to make this ViewModelly-class aware of purely View classes, which is not ideal. 
+            // I have to do it because DataGrid doesn't support binding to SelectedItems.
+            CurrentViewOfCommits.RegisterCommitList(mainCommitList);
+            CurrentlyDisplayedFeatureBranch.RegisterCommitList(secondaryCommitList);
+        }
+        */
+
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -60,12 +53,212 @@ namespace egit.Engine
             RepoInfo = repoInfo;
         }
 
+        public GitEngine()
+        {
+            CurrentViewOfCommits = new CommitViewEnumerableWrapper(HandleMainSelectedCommitChanged);
+            CurrentlyDisplayedFeatureBranch = new CommitViewEnumerableWrapper(HandleSecondarySelectedCommitChanged);
+        }
 
-        public List<string> MainCommitList { get { return new List<string>() { "abc", "cexf" }; } }
+        public CommitViewEnumerableWrapper CurrentViewOfCommits;
+        public CommitViewEnumerableWrapper CurrentlyDisplayedFeatureBranch;
 
-        public CommitViewEnumerableWrapper CurrentViewOfCommits = new CommitViewEnumerableWrapper();
-        public CommitViewEnumerableWrapper CurrentlyDisplayedFeatureBranch = new CommitViewEnumerableWrapper();
+        private void HandleMainSelectedCommitChanged(CommitWrapper c1w, CommitWrapper c0w)
+        {
+            Commit c1 = c1w.Commit;
+            ModelTransient.CurrentlySelectedChangelist = -1;
+            string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w.N == -2 ? "[stage]" : (c1w.N == -1 ? "[working]" : "[unknown]"));
+            string commitId0 = "";
+            if (c0w != null)
+            {
+                Commit c0 = c0w.Commit;
+                commitId0 = c0 != null ? c0.Id.ToString(8) : (c0w.N == -2 ? "[stage]" : (c0w.N == -1 ? "[working]" : "[unknown]"));
+                if (c0w.N < c1w.N)
+                {
+                    string temp = commitId0;
+                    commitId0 = commitId1;
+                    commitId1 = temp;
+                }
+            }
 
+            Snapshot oldCommit1 = CurrentDiffCommit1;
+            Snapshot oldCommit0 = CurrentDiffCommit0;
+
+            SelectCommitsToDiff(commitId1, commitId0, true);
+
+            bool commitsDidntChange = (oldCommit1.Commit == CurrentDiffCommit1.Commit && oldCommit1.SnapshotType == CurrentDiffCommit1.SnapshotType &&
+                oldCommit0.Commit == CurrentDiffCommit0.Commit && oldCommit0.SnapshotType == CurrentDiffCommit0.SnapshotType);
+
+            RefreshListViewCommits2();
+
+            if (!commitsDidntChange)
+            {
+                RefreshListOfDiffFiles();
+            }
+        }
+
+        private void HandleSecondarySelectedCommitChanged(CommitWrapper c1w, CommitWrapper c0w)
+        {
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
+            {
+                int changelistId;
+                Int32.TryParse(c1w.Id, out changelistId);
+                ModelTransient.CurrentlySelectedChangelist = changelistId;
+                RefreshListViewCommits2();
+                RefreshListOfDiffFiles();
+            }
+            else
+            {
+                Commit c1 = c1w.Commit;
+                ModelTransient.CurrentlySelectedChangelist = -1;
+                string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w.N == -2 ? "[stage]" : (c1w.N == -1 ? "[working]" : "[unknown]"));
+                string commitId0 = "";
+                if (c0w != null)
+                {
+                    commitId0 = c0w.Commit.Id.ToString(8);
+                }
+
+                Snapshot oldCommit1 = CurrentDiffCommit1;
+                Snapshot oldCommit0 = CurrentDiffCommit0;
+
+                SelectCommitsToDiff(commitId1, commitId0, false);
+
+                bool commitsDidntChange = (oldCommit1.Commit == CurrentDiffCommit1.Commit && oldCommit1.SnapshotType == CurrentDiffCommit1.SnapshotType &&
+                    oldCommit0.Commit == CurrentDiffCommit0.Commit && oldCommit0.SnapshotType == CurrentDiffCommit0.SnapshotType);
+
+                if (!commitsDidntChange)
+                {
+                    RefreshListOfDiffFiles();
+                }
+            }
+        }
+
+        internal void SelectCommitsToDiff(string commitId1, string commitId0, bool commit0IsInMasterBranch)
+        {
+            int commitIndex1;
+
+            CurrentDiffCommit1 = GetSnapshotFromCommitId(commitId1, out commitIndex1);
+            if (commitId0 == "")
+            {
+                if (commit0IsInMasterBranch)
+                {
+                    CurrentDiffCommit0.SnapshotType = SnapshotType.Commit;
+                    int commitIndex1Plus1 = Math.Max(0, commitIndex1 + 1);
+                    CurrentDiffCommit0.Commit = (commitIndex1Plus1 < MasterBranchCommits.Count) ? MasterBranchCommits[commitIndex1Plus1] : null;
+                }
+                else
+                {
+                    CurrentDiffCommit0.Commit = CurrentDiffCommit1.Commit.Parents.FirstOrDefault();
+                    if (CurrentDiffCommit0.Commit != null)
+                    {
+                        CurrentDiffCommit0.SnapshotType = SnapshotType.Commit;
+                    }
+                }
+            }
+            else
+            {
+                int commitIndex0;
+                CurrentDiffCommit0 = GetSnapshotFromCommitId(commitId0, out commitIndex0);
+            }
+        }
+
+        private Snapshot GetSnapshotFromCommitId(string id, out int commitIndex)
+        {
+            Snapshot snap;
+            snap.SnapshotType = SnapshotType.Unknown;
+            snap.Commit = null;
+            commitIndex = -3;
+
+            if (id == "[stage]")
+            {
+                snap.SnapshotType = SnapshotType.Stage;
+            }
+            else if (id == "[working]")
+            {
+                snap.SnapshotType = SnapshotType.WorkingDirectory;
+            }
+            else
+            {
+                commitIndex = MasterBranchCommits.FindIndex(c => c.Id.StartsWith(id));
+                if (commitIndex >= 0)
+                {
+                    snap.SnapshotType = SnapshotType.Commit;
+                    snap.Commit = MasterBranchCommits[commitIndex];
+                }
+                else
+                {
+                    snap.Commit = Repo.Lookup<Commit>(id);
+                    if (snap.Commit != null)
+                    {
+                        snap.SnapshotType = SnapshotType.Commit;
+                    }
+                }
+            }
+
+            return snap;
+        }
+
+        private void RefreshListOfDiffFiles()
+        {
+            /*
+            if (ModelTransient.CurrentlySelectedChangelist < 0)
+            {
+                CurrentlyDisplayedDiff = Model.GetDiffsBetweenCommits();
+            }
+            else
+            {
+                CurrentlyDisplayedDiff = ModelTransient.GetCurrentlySelectedChangelist(Model.CachedWorkingDirectory);
+            }
+
+            folvFiles.SetObjects(CurrentlyDisplayedDiff);
+
+            bool useFilter = false;
+            string filterPath = "";
+            if (toolStripButtonUseFilter.Checked)
+            {
+                if (textBoxPath.Text.StartsWith(Properties.Settings.Default.LastSelectedLocalRepo))
+                {
+                    filterPath = textBoxPath.Text.Substring(Properties.Settings.Default.LastSelectedLocalRepo.Length);
+                    filterPath = filterPath.Replace('/', '\\').Trim('\\');
+                }
+
+                useFilter = filterPath != "";
+            }
+
+            folvFiles.UseFiltering = toolStripButtonUseFilter.Checked;
+
+            folvFiles.ModelFilter = useFilter ? new ModelFilter(delegate (object x)
+            {
+                Model.FileAndStatus fs = (Model.FileAndStatus)x;
+                return fs.FileName.StartsWith(filterPath) || (fs.OldFileName != "" && fs.OldFileName.StartsWith(filterPath));
+            })
+            : null;
+
+            labelCommitInfo.Text = (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit ? Model.CurrentDiffCommit1.Commit.Id.ToString(8) :
+                (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.WorkingDirectory ? "[Working directory]" : "[Stage]")) +
+                " vs. " + Model.CurrentDiffCommit0.Commit?.Id.ToString(8);
+
+            labelCommitParents.Text = Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit ?
+                $"{Model.CurrentDiffCommit1.Commit.Id.ToString(8)} : {string.Join(", ", Model.CurrentDiffCommit1.Commit.Parents.Select(p => p.Id.ToString(8)))}"
+                : "";
+
+            int numFilesNonFiltered = CurrentlyDisplayedDiff.Count;
+            int numFilesFiltered = folvFiles.Items.Count;
+            string numTotalFiles = numFilesNonFiltered + " file" + (numFilesNonFiltered != 1 ? "s" : "");
+            if (numFilesNonFiltered == numFilesFiltered)
+            {
+                labelCommitNumFiles.ForeColor = Color.Black;
+                labelCommitNumFiles.Text = numTotalFiles;
+            }
+            else
+            {
+                labelCommitNumFiles.ForeColor = Color.Red;
+                labelCommitNumFiles.Text = numFilesFiltered + " of " + numTotalFiles;
+            }
+
+            labelCommitMessage.Text = (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit) ? Model.CurrentDiffCommit1.Commit.Message : "";
+            */
+
+        }
 
         public int Counter
         {
@@ -217,7 +410,7 @@ namespace egit.Engine
             if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
             {
                 RefreshListViewCommits2();
-                //RefreshListOfDiffFiles(); // TODO: restore this
+                RefreshListOfDiffFiles();
             }
 
             LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
@@ -637,7 +830,6 @@ namespace egit.Engine
 
             return featureBranchCommits;
         }
-
 
         internal Branch CurrentSelectedBranch = null;
         internal int IndexOfHeadBranch = -1; // TODO: refactor this, shouldn't store as int

@@ -48,11 +48,11 @@
         <Grid RowDefinitions="3*,4,3*" Grid.Column="2">
           <Grid ColumnDefinitions="5*,4,2*" Grid.Row="0">
             <!-- Main commit list view -->
-            <views:View_CommitList Grid.Column="0" Content="{Binding MainCommitList}"/>
+            <views:View_CommitList x:Name="MainCommitList" Grid.Column="0" Content="{Binding MainCommitList}"/>
               
             <GridSplitter Grid.Column="1" />
             <!-- Secondary commit list view -->
-            <views:View_CommitList Grid.Column="2" Content="{Binding SecondaryCommitList}"/>
+            <views:View_CommitList x:Name="SecondaryCommitList" Grid.Column="2" Content="{Binding SecondaryCommitList}"/>
 
           </Grid>
           <GridSplitter Grid.Row="1" />
