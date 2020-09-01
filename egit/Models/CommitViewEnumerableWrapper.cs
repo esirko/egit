@@ -53,8 +53,16 @@ namespace egit.Models
                 _SelectedCommit = value;
                 OnPropertyChanged();
 
-                var x = CommitListView.DataGridCommitList.SelectedItems;
-                HandleMainSelectedCommitChanged(_SelectedCommit, null);
+                CommitWrapper secondSelectedCommit = null;
+                if (CommitListView.DataGridCommitList.SelectedItems.Count > 1)
+                {
+                    secondSelectedCommit = CommitListView.DataGridCommitList.SelectedItems[1] as CommitWrapper;
+                    if (_SelectedCommit == secondSelectedCommit)
+                    {
+                        secondSelectedCommit = CommitListView.DataGridCommitList.SelectedItems[0] as CommitWrapper;
+                    }
+                }
+                HandleMainSelectedCommitChanged(_SelectedCommit, secondSelectedCommit);
             }
         }
     }
