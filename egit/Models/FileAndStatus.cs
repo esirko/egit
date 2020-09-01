@@ -13,8 +13,10 @@ namespace egit.Models
             FileName = f;
             OldFileName = oldFileName;
         }
-        public ChangeKind Status;
-        public string FileName;
-        public string OldFileName;
+        public ChangeKind Status { get; private set; } // private set is necessary so it's not editable in the UI
+        public string FileName { get; }
+        public string OldFileName { get; }
+
+        public void SetStatus(ChangeKind s) { Status = s; }
     }
 }

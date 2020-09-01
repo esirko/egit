@@ -63,7 +63,7 @@
             </views:View_CommitInfo>
             <GridSplitter Grid.Row="1" />
             <!-- Commit file details -->
-            <views:View_CommitFileList Grid.Row="2"  Content="{Binding CommitFileList}"/>
+            <views:View_CommitFileList Grid.Row="2" Content="{Binding CommitFileList}"/>
           </Grid>
         </Grid>
       </Grid>

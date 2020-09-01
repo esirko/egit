@@ -199,18 +199,17 @@ namespace egit.Engine
 
         private void RefreshListOfDiffFiles()
         {
-            /*
             if (ModelTransient.CurrentlySelectedChangelist < 0)
             {
-                CurrentlyDisplayedDiff = Model.GetDiffsBetweenCommits();
+                CurrentlyDisplayedDiff = new ObservableCollection<FileAndStatus>(GetDiffsBetweenCommits());
             }
             else
             {
-                CurrentlyDisplayedDiff = ModelTransient.GetCurrentlySelectedChangelist(Model.CachedWorkingDirectory);
+                CurrentlyDisplayedDiff = new ObservableCollection<FileAndStatus>(ModelTransient.GetCurrentlySelectedChangelist(CachedWorkingDirectory));
             }
 
-            folvFiles.SetObjects(CurrentlyDisplayedDiff);
-
+            /*
+            // TODO: reimplement filtering
             bool useFilter = false;
             string filterPath = "";
             if (toolStripButtonUseFilter.Checked)
@@ -232,33 +231,149 @@ namespace egit.Engine
                 return fs.FileName.StartsWith(filterPath) || (fs.OldFileName != "" && fs.OldFileName.StartsWith(filterPath));
             })
             : null;
+            */
 
-            labelCommitInfo.Text = (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit ? Model.CurrentDiffCommit1.Commit.Id.ToString(8) :
-                (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.WorkingDirectory ? "[Working directory]" : "[Stage]")) +
-                " vs. " + Model.CurrentDiffCommit0.Commit?.Id.ToString(8);
+            CommitInfo = (CurrentDiffCommit1.SnapshotType == SnapshotType.Commit ? CurrentDiffCommit1.Commit.Id.ToString(8) :
+                (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory ? "[Working directory]" : "[Stage]")) +
+                " vs. " + CurrentDiffCommit0.Commit?.Id.ToString(8);
 
-            labelCommitParents.Text = Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit ?
-                $"{Model.CurrentDiffCommit1.Commit.Id.ToString(8)} : {string.Join(", ", Model.CurrentDiffCommit1.Commit.Parents.Select(p => p.Id.ToString(8)))}"
+            CommitParents = CurrentDiffCommit1.SnapshotType == SnapshotType.Commit ?
+                $"{CurrentDiffCommit1.Commit.Id.ToString(8)} : {string.Join(", ", CurrentDiffCommit1.Commit.Parents.Select(p => p.Id.ToString(8)))}"
                 : "";
 
             int numFilesNonFiltered = CurrentlyDisplayedDiff.Count;
-            int numFilesFiltered = folvFiles.Items.Count;
+            int numFilesFiltered = numFilesNonFiltered; // TODO: this will change if we reimplement filtering
             string numTotalFiles = numFilesNonFiltered + " file" + (numFilesNonFiltered != 1 ? "s" : "");
-            if (numFilesNonFiltered == numFilesFiltered)
+            CommitNumFiles = numTotalFiles;
+            if (numFilesNonFiltered != numFilesFiltered)
             {
-                labelCommitNumFiles.ForeColor = Color.Black;
-                labelCommitNumFiles.Text = numTotalFiles;
+                // TODO: we also change the label color to Red to highlight that you're filtering, if you're filtering
+                CommitNumFiles = numFilesFiltered + " of " + numTotalFiles;
+            }
+
+            CommitMessage = (CurrentDiffCommit1.SnapshotType == SnapshotType.Commit) ? CurrentDiffCommit1.Commit.Message : "";
+        }
+
+        internal List<FileAndStatus> GetDiffsBetweenCommits()
+        {
+            List<FileAndStatus> aggregated;
+
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
+            {
+                aggregated = CachedStage;
+            }
+            else if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
+            {
+                aggregated = new List<FileAndStatus>();
+
+                if (MasterBranchCommits.Count > 0 && CurrentDiffCommit0.Commit != MasterBranchCommits[0])
+                {
+                    TreeChanges changes = Repo.Diff.Compare<TreeChanges>(CurrentDiffCommit0.Commit?.Tree, MasterBranchCommits[0].Tree);
+                    foreach (TreeEntryChanges c in changes)
+                    {
+                        aggregated.Add(new FileAndStatus(c.Status, c.Path, ((c.Status == ChangeKind.Renamed) ? c.OldPath : "")));
+                    }
+                }
+
+                List<int> indicesToInsert = new List<int>();
+                for (int i = 0; i < CachedWorkingDirectory.Count; i++)
+                {
+                    bool foundMatch = false;
+                    for (int j = 0; j < aggregated.Count; j++)
+                    {
+                        if (aggregated[j].FileName == CachedWorkingDirectory[i].FileName)
+                        {
+                            if (aggregated[j].Status == ChangeKind.Added)
+                            {
+                                switch (CachedWorkingDirectory[i].Status)
+                                {
+                                    case ChangeKind.Modified:
+                                        // keep status as added.. no-op.. continue
+                                        break;
+
+                                    case ChangeKind.Deleted:
+                                        aggregated.RemoveAt(j); // Added then deleted the same file. You can remove it from the aggregated list.
+                                        break;
+                                }
+                            }
+                            else if (aggregated[j].Status == ChangeKind.Modified)
+                            {
+                                switch (CachedWorkingDirectory[i].Status)
+                                {
+                                    case ChangeKind.Modified:
+                                        // keep status as modified.. no-op.. continue
+                                        break;
+
+                                    case ChangeKind.Deleted:
+                                        aggregated[j].SetStatus(ChangeKind.Deleted); // Modified then deleted. Change status to deleted.
+                                        break;
+                                }
+                            }
+                            else if (aggregated[j].Status == ChangeKind.Deleted)
+                            {
+                                switch (CachedWorkingDirectory[i].Status)
+                                {
+                                    case ChangeKind.Added:
+                                        aggregated[j].SetStatus(ChangeKind.Modified); // deleted then added back; status is modified. Potentially the files are identical, but still call it modified.
+                                        break;
+
+                                    case ChangeKind.Renamed:
+                                        Console.WriteLine("Complicated unhandled situation..."); // A file that was deleted was re-added through a rename. This is complicated!
+                                        break;
+                                }
+                            }
+                            else if (aggregated[j].Status == ChangeKind.Renamed)
+                            {
+                                switch (CachedWorkingDirectory[i].Status)
+                                {
+                                    case ChangeKind.Modified:
+                                        // Renamed then modified: no-op.
+                                        break;
+
+                                    case ChangeKind.Deleted:
+                                        Console.WriteLine("Complicated unhandled situation..."); // Renamed then deleted. This is complicated
+                                        break;
+                                }
+                            }
+                            foundMatch = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundMatch)
+                    {
+                        indicesToInsert.Add(i);
+                    }
+                }
+
+                for (int i = 0; i < indicesToInsert.Count; i++)
+                {
+                    int j = 0;
+                    for (; j < aggregated.Count; j++) // TODO: the initial value of j can be optimized I think to make this a O(N) algorithm
+                    {
+                        if (String.Compare(aggregated[j].FileName, CachedWorkingDirectory[indicesToInsert[i]].FileName) > 0)
+                        {
+                            break;
+                        }
+                    }
+                    aggregated.Insert(j, CachedWorkingDirectory[indicesToInsert[i]]);
+                }
             }
             else
             {
-                labelCommitNumFiles.ForeColor = Color.Red;
-                labelCommitNumFiles.Text = numFilesFiltered + " of " + numTotalFiles;
+                aggregated = new List<FileAndStatus>();
+                if (CurrentDiffCommit0.SnapshotType != SnapshotType.Unknown)
+                {
+                    TreeChanges changes = Repo.Diff.Compare<TreeChanges>(CurrentDiffCommit0.Commit?.Tree, CurrentDiffCommit1.Commit.Tree);
+                    foreach (TreeEntryChanges c in changes)
+                    {
+                        aggregated.Add(new FileAndStatus(c.Status, c.Path, ((c.Status == ChangeKind.Renamed) ? c.OldPath : "")));
+                    }
+                }
             }
-
-            labelCommitMessage.Text = (Model.CurrentDiffCommit1.SnapshotType == Model.SnapshotType.Commit) ? Model.CurrentDiffCommit1.Commit.Message : "";
-            */
-
+            return aggregated;
         }
+
 
         public int Counter
         {
@@ -869,6 +984,62 @@ namespace egit.Engine
         private ViewModel_RepoInfo RepoInfo;
 
         bool CurrentlyTraversingHeadBranch = false;
+
+
+        ObservableCollection<FileAndStatus> _CurrentlyDisplayedDiff;
+        public ObservableCollection<FileAndStatus> CurrentlyDisplayedDiff
+        {
+            get { return _CurrentlyDisplayedDiff; }
+            set
+            {
+                _CurrentlyDisplayedDiff = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _CommitInfo;
+        public string CommitInfo 
+        {
+            get { return _CommitInfo; }
+            set
+            {
+                _CommitInfo = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _CommitNumFiles;
+        public string CommitNumFiles
+        {
+            get { return _CommitNumFiles; }
+            set
+            {
+                _CommitNumFiles = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _CommitParents;
+        public string CommitParents
+        {
+            get { return _CommitParents; }
+            set
+            {
+                _CommitParents = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _CommitMessage;
+        public string CommitMessage
+        {
+            get { return _CommitMessage; }
+            set
+            {
+                _CommitMessage = value;
+                OnPropertyChanged();
+            }
+        }
 
     }
 }
