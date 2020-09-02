@@ -464,11 +464,6 @@ namespace egit.Engine
                     }
                 }
 
-                UpdateStatus(0, "Before Starting");
-                UpdateStatus(1, "Before Starting");
-                UpdateStatus(2, "Before Starting");
-                UpdateStatus(3, "Before Starting");
-
                 // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
                 // was in the old code. This propagated to the variables NeedToReloadDiffCache.
                 Task t0 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
@@ -483,18 +478,19 @@ namespace egit.Engine
         }
 
         List<string> Statuses = new List<string>() { "", "", "", "" };
-        void UpdateStatus(int index, string message)
+        void UpdateStatus(int index, DateTime startTime, string message)
         {
-            Statuses[index] = message;
-            StatusBarText = Statuses[0] + " / " + Statuses[1] + " / " + Statuses[2] + " / " + Statuses[3];
+            DateTime now = DateTime.UtcNow;
+            Statuses[index] = $"{message} [{(now - startTime).TotalSeconds.ToString("0.000")}]";
+            StatusBarText = $"Branch poll: {Statuses[0]}   /   Branch traversal: {Statuses[1]}   /   Commit analysis: {Statuses[2]}   /   Git status: {Statuses[3]}";
         } 
-
 
 
 
         private async Task RefreshComboBoxBranchesAsync()
         {
-            UpdateStatus(0, "Starting");
+            DateTime startTime = DateTime.UtcNow;
+            UpdateStatus(0, startTime, "Starting");
             int numBranchesVisited = 0;
 
             string enumeratingBranches = "Enumerating branches...";
@@ -514,7 +510,7 @@ namespace egit.Engine
                 }
                 await Task.Yield();
                 numBranchesVisited++;
-                UpdateStatus(0, "NumBranches: " + numBranchesVisited);
+                UpdateStatus(0, startTime, "NumBranches: " + numBranchesVisited);
                 if (numBranchesVisited / 100 == numBranchesVisited/100.0)
                 {
                     //await Task.Delay(30);
@@ -522,12 +518,13 @@ namespace egit.Engine
             }
             Branches = branches;
             SelectedBranch = Branches[IndexOfHeadBranch];
-            UpdateStatus(0, "Done");
+            UpdateStatus(0, startTime, "Done");
         }
 
         private async Task DoGitStatusAsync()
         {
-            UpdateStatus(3, "Starting");
+            DateTime startTime = DateTime.UtcNow;
+            UpdateStatus(3, startTime, "Starting");
             CachedStage.Clear();
             CachedWorkingDirectory.Clear();
 
@@ -572,7 +569,7 @@ namespace egit.Engine
                 }
                 await Task.Yield();
             }
-            UpdateStatus(3, "Done with first part");
+            UpdateStatus(3, startTime, "Done with first part");
 
             LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
             ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
@@ -583,15 +580,16 @@ namespace egit.Engine
                 RefreshListOfDiffFiles();
             }
 
-            UpdateStatus(3, "Done");
+            UpdateStatus(3, startTime, "Done");
         }
 
         private async Task TraverseHeadBranchAsync()
         {
-            UpdateStatus(1, "Starting");
+            DateTime startTime = DateTime.UtcNow;
+            UpdateStatus(1, startTime, "Starting");
             if (CurrentSelectedBranch == null)
             {
-                UpdateStatus(1, "Exiting early");
+                UpdateStatus(1, startTime, "Done");
                 return;
             }
 
@@ -697,25 +695,25 @@ namespace egit.Engine
                 }
                 await Task.Yield();
                 numCommitsVisited++;
-                UpdateStatus(1, $"NumCommits: {numCommitsVisited} [{k}, {nn}]");
+                UpdateStatus(1, startTime, $"NumCommits: {numCommitsVisited} [{k}, {nn}]");
                 if (numCommitsVisited / 100 == numCommitsVisited / 100.0)
                 {
                     //await Task.Delay(30);
                 }
-
             }
 
             FlushPendingMasterCommits(ref nn, ref k, ref pendingMasterCommits);
             CurrentlyTraversingHeadBranch = false;
-            UpdateStatus(1, "Done");
+            UpdateStatus(1, startTime, "Done");
         }
 
         private async Task AnalyzeHeadBranchCommitsAsync()
         {
-            UpdateStatus(2, "Starting");
+            DateTime startTime = DateTime.UtcNow;
+            UpdateStatus(2, startTime, "Starting");
             if (NeedToReloadDiffCache)
             {
-                UpdateStatus(2, "Reloading diff cache");
+                UpdateStatus(2, startTime, "Reloading diff cache");
                 DiffCache.Clear();
 
                 if (!string.IsNullOrEmpty(CurrentRepoPath))
@@ -752,7 +750,7 @@ namespace egit.Engine
                     // TODO: use cancellation token here
 
                     numWhileTrueIterations++;
-                    UpdateStatus(2, $"Status: {numWhileTrueIterations}, i0,i,n = ({i0}, {i}, {n})");
+                    UpdateStatus(2, startTime, $"Status: {numWhileTrueIterations}, i0,i,n = ({i0}, {i}, {n})");
                     if (i / 100 == i / 100.0)
                     {
                         //await Task.Delay(30);
@@ -772,7 +770,7 @@ namespace egit.Engine
             }
 
             CommitAnalyzerStopwatch.Stop();
-            UpdateStatus(2, "Done");
+            UpdateStatus(2, startTime, "Done");
         }
 
 
