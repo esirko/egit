@@ -27,6 +27,12 @@
       </MenuItem>
     </Menu>
 
+    <DockPanel DockPanel.Dock="Bottom">
+      <TextBlock Margin="4" HorizontalAlignment="Stretch" DataContext="{Binding GitRepoEngine}" Text="{Binding StatusBarText}"></TextBlock>
+    </DockPanel>
+
+
+
 
     <DockPanel DockPanel.Dock="Top">
       <!-- Repo info with the two rows of combo boxes and text boxes at the top -->
@@ -56,7 +62,7 @@
 
           </Grid>
           <GridSplitter Grid.Row="1" />
-          <Grid RowDefinitions="40,4,*" Grid.Row="2">
+          <Grid RowDefinitions="56,4,*" Grid.Row="2">
             <!-- Commit information (narrow bar in middle) -->
             <views:View_CommitInfo Grid.Row="0" Content="{Binding CommitInfo}">
               

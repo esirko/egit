@@ -7,7 +7,7 @@
   <ListBox Items="{Binding Users}">
     <ListBox.DataTemplates>
       <DataTemplate>
-        <TextBlock Text="{Binding Name}" />
+        <TextBlock Margin="2" Text="{Binding Name}" />
 </DataTemplate>
     </ListBox.DataTemplates>
   </ListBox>

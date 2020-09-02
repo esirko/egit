@@ -24,16 +24,6 @@ namespace egit.Engine
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        /*
-        internal void RegisterCommitLists(View_CommitList mainCommitList, View_CommitList secondaryCommitList)
-        {
-            // TODO: I have to make this ViewModelly-class aware of purely View classes, which is not ideal. 
-            // I have to do it because DataGrid doesn't support binding to SelectedItems.
-            CurrentViewOfCommits.RegisterCommitList(mainCommitList);
-            CurrentlyDisplayedFeatureBranch.RegisterCommitList(secondaryCommitList);
-        }
-        */
-
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -46,11 +36,6 @@ namespace egit.Engine
                 _Singleton = new GitEngine();
             }
             return _Singleton;
-        }
-
-        internal void InitializeViewModel(ViewModel_RepoInfo repoInfo)
-        {
-            RepoInfo = repoInfo;
         }
 
         public GitEngine()
@@ -375,12 +360,13 @@ namespace egit.Engine
         }
 
 
-        public int Counter
+        string _StatusBarText;
+        public string StatusBarText
         {
-            get { return _Counter; }
+            get { return _StatusBarText; }
             set
             {
-                _Counter = value;
+                _StatusBarText = value;
                 OnPropertyChanged();
             }
         }
@@ -422,10 +408,6 @@ namespace egit.Engine
                     }
                 }
 
-                delayTime /= 2;
-                Task t = new Task(async () => { await DoStuffAsync(); });
-                t.Start();
-
                 // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
                 // was in the old code. This propagated to the variables NeedToReloadDiffCache.
                 Task t2 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
@@ -438,15 +420,6 @@ namespace egit.Engine
                 t4.Start();
                 t5.Start();
                 t6.Start();
-            }
-        }
-
-        private async Task DoStuffAsync()
-        {
-            for (int i = 0; i < 60; i++)
-            {
-                await Task.Delay(delayTime);
-                Counter++;
             }
         }
 
@@ -838,7 +811,7 @@ namespace egit.Engine
                 HistoryFS.PopulateWithFileAndCommitPair(diffs[i], c1);
             }
 
-            UserFS.PopulateWithFileAndCommitPair(c1.Author.Name, c1);
+            UserFS.PopulateWithFileAndCommitPair(c1.Author.Name, c1); // TODO: I need to make a slight adjustment to handle this because it will break if the author name has a slash
         }
 
         private string GetDiffCacheFileName(string lastSelectedLocalRepo)
@@ -979,9 +952,6 @@ namespace egit.Engine
 
         private static GitEngine _Singleton;
         private string CurrentRepoPath;
-        int delayTime = 2000;
-        private int _Counter;
-        private ViewModel_RepoInfo RepoInfo;
 
         bool CurrentlyTraversingHeadBranch = false;
 
@@ -993,6 +963,17 @@ namespace egit.Engine
             set
             {
                 _CurrentlyDisplayedDiff = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _BranchFilter;
+        public string BranchFilter 
+        {
+            get { return _BranchFilter; }
+            set
+            {
+                _BranchFilter = value;
                 OnPropertyChanged();
             }
         }

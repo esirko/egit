@@ -7,26 +7,26 @@
   <StackPanel Orientation="Vertical">
     <StackPanel Orientation="Horizontal">
 
-      <TextBlock Width="40">Repo</TextBlock>
+      <TextBlock Margin="4" Width="40">Repo</TextBlock>
       <ComboBox x:Name="ComboBoxRepo" Width="150" Items="{Binding ReposWithOptions}" SelectedItem="{Binding SelectedRepoOrOption}">
         <ComboBox.ItemTemplate>
           <DataTemplate>
             <DockPanel>
-              <TextBlock Text="{Binding}" />
+              <TextBlock Margin="4" Text="{Binding}" />
             </DockPanel>
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
 
-      <TextBlock Width="80">1/1 Branch</TextBlock>
+      <TextBlock Margin="4" Width="80">1/1 Branch</TextBlock>
       <ComboBox Width="150" DataContext="{Binding GitRepoEngine}" Items="{Binding Branches}" SelectedItem="{Binding SelectedBranch}"/>
 
-      <TextBlock Width="40">Filter</TextBlock>
-      <TextBox Width="200" DataContext="{Binding GitRepoEngine}" Text="{Binding Counter}"></TextBox>
+      <TextBlock Margin="4" Width="40">Filter</TextBlock>
+      <TextBox Width="200" DataContext="{Binding GitRepoEngine}" Text="{Binding BranchFilter}"></TextBox>
 
     </StackPanel>
     <StackPanel Orientation="Horizontal">
-      <TextBlock Width="40">Path</TextBlock>
+      <TextBlock Margin="4" Width="40">Path</TextBlock>
       <TextBox Width="400"></TextBox>
     </StackPanel>
   </StackPanel>

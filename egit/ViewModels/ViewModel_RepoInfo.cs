@@ -19,7 +19,6 @@ namespace egit.ViewModels
             Repos = Settings.Default.LocalRepos?.Cast<string>().ToList();
             _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
             Initialized = true;
-            GitEngine.Get().InitializeViewModel(this);
             GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
         }
 

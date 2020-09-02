@@ -10,10 +10,10 @@
   <TreeView Items="{Binding RootDirectoriesAndFiles}">
     <TreeView.DataTemplates>
       <TreeDataTemplate DataType="models:HackyFolder" ItemsSource="{Binding SortedObservableEntries}">
-        <TextBlock Foreground="Red" Text="{Binding Name}" />
+        <TextBlock Margin="2" Text="{Binding Name}" FontWeight="Bold" />
       </TreeDataTemplate>
       <DataTemplate DataType="models:HackyFile">
-        <TextBlock Text="{Binding Name}" />
+        <TextBlock Margin="2" Text="{Binding Name}" />
       </DataTemplate>
     </TreeView.DataTemplates>
   </TreeView>
