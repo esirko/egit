@@ -719,7 +719,7 @@ namespace egit.Engine
                 if (!string.IsNullOrEmpty(CurrentRepoPath))
                 {
                     string diffCacheFile = GetDiffCacheFileName(CurrentRepoPath);
-                    if (File.Exists(diffCacheFile))
+                    if (File.Exists(diffCacheFile) && false) // TODO: turn back on the DiffCache, probably. I'm turning it off to make sure things work without it.
                     {
                         Stopwatch sw = new Stopwatch();
                         sw.Start();
