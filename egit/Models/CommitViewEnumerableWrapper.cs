@@ -16,7 +16,7 @@ namespace egit.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private ObservableCollection<CommitWrapper> _CurrentViewOfCommits = new ObservableCollection<CommitWrapper>(new List<CommitWrapper>() { new CommitWrapper(0) } );
+        private ObservableCollection<CommitWrapper> _CurrentViewOfCommits = new ObservableCollection<CommitWrapper>();
         public ObservableCollection<CommitWrapper> Commits
         {
             get { return _CurrentViewOfCommits; }

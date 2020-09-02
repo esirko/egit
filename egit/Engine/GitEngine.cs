@@ -462,18 +462,21 @@ namespace egit.Engine
                     {
                         MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}").Show();
                     }
-                }
 
-                // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
-                // was in the old code. This propagated to the variables NeedToReloadDiffCache.
-                Task t0 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
-                Task t1 = new Task(async () => { await TraverseHeadBranchAsync(); });
-                Task t2 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
-                Task t3 = new Task(async () => { await DoGitStatusAsync(); });
-                t0.Start();
-                t1.Start();
-                t2.Start();
-                t3.Start();
+                    if (Repo != null)
+                    {
+                        // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
+                        // was in the old code. This propagated to the variables NeedToReloadDiffCache.
+                        Task t0 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
+                        Task t1 = new Task(async () => { await TraverseHeadBranchAsync(); });
+                        Task t2 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
+                        Task t3 = new Task(async () => { await DoGitStatusAsync(); });
+                        t0.Start();
+                        t1.Start();
+                        t2.Start();
+                        t3.Start();
+                    }
+                }
             }
         }
 
@@ -497,11 +500,14 @@ namespace egit.Engine
             Branches = new List<string>() { enumeratingBranches };
             SelectedBranch = enumeratingBranches;
 
+
             List<string> branches = new List<string>();
             foreach (Branch b in Repo.Branches)
             {
                 if (!b.FriendlyName.StartsWith("full")) // TODO: what is this? Probably a remnant of something that can be deleted now
-                {
+                { 
+                    // TODO: On VSO, my branch was somehow set to releases/m159_ghub_sps even though the actual branch name is releases/M159_ghub_sps (difference in casing) ... this caused the branch to not be found as the current head branch ... not sure how to best handle
+                    // TODO: also, won't this crash if you're on a detached head? (By leaving IndexOfHeadBranch = -1 and then out-of-boundsing below)
                     if (b.IsCurrentRepositoryHead)
                     {
                         IndexOfHeadBranch = branches.Count;
@@ -521,67 +527,17 @@ namespace egit.Engine
             UpdateStatus(0, startTime, "Done");
         }
 
-        private async Task DoGitStatusAsync()
+        /*
+        private async Task DoDumbSpinLockAsync(int index, DateTime startTime, int delay)
         {
-            DateTime startTime = DateTime.UtcNow;
-            UpdateStatus(3, startTime, "Starting");
-            CachedStage.Clear();
-            CachedWorkingDirectory.Clear();
-
-            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(DateTime.MinValue);
-
-            foreach (var item in Repo.RetrieveStatus())
+            int num = delay / 30;
+            for (int i = 0; i < num; i++)
             {
-                if (item.State != FileStatus.Ignored)
-                {
-                    Console.WriteLine(item.State + " " + item.FilePath);
-                    string originalFileName = "";
-
-                    ChangeKind reducedState = ChangeKind.Ignored;
-                    if ((item.State & FileStatus.NewInWorkdir) > 0) reducedState = ChangeKind.Added;
-                    else if ((item.State & FileStatus.DeletedFromWorkdir) > 0) reducedState = ChangeKind.Deleted;
-                    else if ((item.State & FileStatus.ModifiedInWorkdir) > 0) reducedState = ChangeKind.Modified;
-                    else if ((item.State & FileStatus.RenamedInWorkdir) > 0)
-                    {
-                        reducedState = ChangeKind.Renamed;
-                        originalFileName = item.IndexToWorkDirRenameDetails.OldFilePath; // This may be wrong... it's untested..
-                    }
-                    else if ((item.State & FileStatus.TypeChangeInWorkdir) > 0) reducedState = ChangeKind.TypeChanged;
-                    if (reducedState != ChangeKind.Ignored)
-                    {
-                        CachedWorkingDirectory.Add(new FileAndStatus(reducedState, item.FilePath, originalFileName));
-                    }
-
-                    reducedState = ChangeKind.Ignored;
-                    if ((item.State & FileStatus.NewInIndex) > 0) reducedState = ChangeKind.Added;
-                    else if ((item.State & FileStatus.DeletedFromIndex) > 0) reducedState = ChangeKind.Deleted;
-                    else if ((item.State & FileStatus.ModifiedInIndex) > 0) reducedState = ChangeKind.Modified;
-                    else if ((item.State & FileStatus.RenamedInIndex) > 0)
-                    {
-                        reducedState = ChangeKind.Renamed;
-                        originalFileName = item.HeadToIndexRenameDetails.OldFilePath;
-                    }
-                    else if ((item.State & FileStatus.TypeChangeInIndex) > 0) reducedState = ChangeKind.TypeChanged;
-                    if (reducedState != ChangeKind.Ignored)
-                    {
-                        CachedStage.Add(new FileAndStatus(reducedState, item.FilePath, originalFileName));
-                    }
-                }
-                await Task.Yield();
+                await Task.Delay(30);
+                UpdateStatus(index, startTime, $"Waited {num}");
             }
-            UpdateStatus(3, startTime, "Done with first part");
-
-            LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
-            ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
-            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
-            if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
-            {
-                RefreshListViewCommits2();
-                RefreshListOfDiffFiles();
-            }
-
-            UpdateStatus(3, startTime, "Done");
         }
+        */
 
         private async Task TraverseHeadBranchAsync()
         {
@@ -592,6 +548,8 @@ namespace egit.Engine
                 UpdateStatus(1, startTime, "Done");
                 return;
             }
+
+//            await DoDumbSpinLockAsync(1, startTime, 3000);
 
             CurrentlyTraversingHeadBranch = true;
             int k = 0;
@@ -734,6 +692,8 @@ namespace egit.Engine
                 }
             }
 
+//            await DoDumbSpinLockAsync(2, startTime, 10000);
+
             int numWhileTrueIterations = 0;
             int i0 = 0;
             while (true)
@@ -773,6 +733,70 @@ namespace egit.Engine
             UpdateStatus(2, startTime, "Done");
         }
 
+
+        private async Task DoGitStatusAsync()
+        {
+            DateTime startTime = DateTime.UtcNow;
+            UpdateStatus(3, startTime, "Starting");
+            CachedStage.Clear();
+            CachedWorkingDirectory.Clear();
+
+            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(DateTime.MinValue);
+
+//            await DoDumbSpinLockAsync(3, startTime, 10000);
+
+            foreach (var item in Repo.RetrieveStatus())
+            {
+                if (item.State != FileStatus.Ignored)
+                {
+                    Console.WriteLine(item.State + " " + item.FilePath);
+                    string originalFileName = "";
+
+                    ChangeKind reducedState = ChangeKind.Ignored;
+                    if ((item.State & FileStatus.NewInWorkdir) > 0) reducedState = ChangeKind.Added;
+                    else if ((item.State & FileStatus.DeletedFromWorkdir) > 0) reducedState = ChangeKind.Deleted;
+                    else if ((item.State & FileStatus.ModifiedInWorkdir) > 0) reducedState = ChangeKind.Modified;
+                    else if ((item.State & FileStatus.RenamedInWorkdir) > 0)
+                    {
+                        reducedState = ChangeKind.Renamed;
+                        originalFileName = item.IndexToWorkDirRenameDetails.OldFilePath; // This may be wrong... it's untested..
+                    }
+                    else if ((item.State & FileStatus.TypeChangeInWorkdir) > 0) reducedState = ChangeKind.TypeChanged;
+                    if (reducedState != ChangeKind.Ignored)
+                    {
+                        CachedWorkingDirectory.Add(new FileAndStatus(reducedState, item.FilePath, originalFileName));
+                    }
+
+                    reducedState = ChangeKind.Ignored;
+                    if ((item.State & FileStatus.NewInIndex) > 0) reducedState = ChangeKind.Added;
+                    else if ((item.State & FileStatus.DeletedFromIndex) > 0) reducedState = ChangeKind.Deleted;
+                    else if ((item.State & FileStatus.ModifiedInIndex) > 0) reducedState = ChangeKind.Modified;
+                    else if ((item.State & FileStatus.RenamedInIndex) > 0)
+                    {
+                        reducedState = ChangeKind.Renamed;
+                        originalFileName = item.HeadToIndexRenameDetails.OldFilePath;
+                    }
+                    else if ((item.State & FileStatus.TypeChangeInIndex) > 0) reducedState = ChangeKind.TypeChanged;
+                    if (reducedState != ChangeKind.Ignored)
+                    {
+                        CachedStage.Add(new FileAndStatus(reducedState, item.FilePath, originalFileName));
+                    }
+                }
+                await Task.Yield();
+            }
+            UpdateStatus(3, startTime, "Done with first part");
+
+            LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
+            ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
+            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
+            if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
+            {
+                RefreshListViewCommits2();
+                RefreshListOfDiffFiles();
+            }
+
+            UpdateStatus(3, startTime, $"Done");
+        }
 
 
         private void FlushPendingMasterCommits(ref int nn, ref int k, ref List<Commit> pendingMasterCommits)
