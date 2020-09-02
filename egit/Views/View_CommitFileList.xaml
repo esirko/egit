@@ -4,8 +4,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_CommitFileList">
-  <DataGrid AutoGenerateColumns="True" 
-            RowBackground="Transparent" AlternatingRowBackground="Transparent" 
-            DataContext="{Binding GitRepoEngine}" Items="{Binding CurrentlyDisplayedDiff}" DoubleTapped="HandleDoubleClick">
+  <DataGrid x:Name="DataGrid" AutoGenerateColumns="True"
+            IsReadOnly="True" GridLinesVisibility="All"
+            RowBackground="Transparent" AlternatingRowBackground="Transparent"
+            DataContext="{Binding GitRepoEngine}" Items="{Binding CurrentlyDisplayedDiff}" DoubleTapped="HandleDoubleClick" KeyDown="HandleKeyDown">
   </DataGrid>
 </UserControl>
