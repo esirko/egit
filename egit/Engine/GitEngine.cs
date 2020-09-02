@@ -29,6 +29,14 @@ namespace egit.Engine
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        internal void SelectedScopeChanged(HackyFileOrFolder selectedScope)
+        {
+            if (selectedScope != null)
+            {
+                CurrentViewOfCommits.Commits = new CommitViewEnumerable(selectedScope.History, CurrentSelectedBranch.IsCurrentRepositoryHead, LastStageAndWorkingDirectoryRefreshTime);
+            }
+        }
+
         public static GitEngine Get()
         {
             if (_Singleton == null)
@@ -49,9 +57,9 @@ namespace egit.Engine
 
         private void HandleMainSelectedCommitChanged(CommitWrapper c1w, CommitWrapper c0w)
         {
-            Commit c1 = c1w.Commit;
+            Commit c1 = c1w?.Commit;
             ModelTransient.CurrentlySelectedChangelist = -1;
-            string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w.N == -2 ? "[stage]" : (c1w.N == -1 ? "[working]" : "[unknown]"));
+            string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w?.N == -2 ? "[stage]" : (c1w?.N == -1 ? "[working]" : "[unknown]"));
             string commitId0 = "";
             if (c0w != null)
             {
@@ -93,9 +101,9 @@ namespace egit.Engine
             }
             else
             {
-                Commit c1 = c1w.Commit;
+                Commit c1 = c1w?.Commit;
                 ModelTransient.CurrentlySelectedChangelist = -1;
-                string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w.N == -2 ? "[stage]" : (c1w.N == -1 ? "[working]" : "[unknown]"));
+                string commitId1 = c1 != null ? c1.Id.ToString(8) : (c1w?.N == -2 ? "[stage]" : (c1w?.N == -1 ? "[working]" : "[unknown]"));
                 string commitId0 = "";
                 if (c0w != null)
                 {

@@ -20,5 +20,16 @@ namespace egit.ViewModels
             }
         }
 
+        HackyFileOrFolder _SelectedUser;
+        public HackyFileOrFolder SelectedUser
+        {
+            get { return _SelectedUser; }
+            set
+            {
+                _SelectedUser = value;
+                GitRepoEngine.SelectedScopeChanged(_SelectedUser);
+            }
+        }
+
     }
 }

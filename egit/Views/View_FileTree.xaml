@@ -7,7 +7,7 @@
              x:Class="egit.Views.View_FileTree">
   <!-- https://github.com/kekekeks/avalonia-net-core-example -->
   <!-- https://www.nequalsonelifestyle.com/2019/06/18/avalonia-treeview-tutorial/ -->
-  <TreeView Items="{Binding RootDirectoriesAndFiles}">
+  <TreeView Items="{Binding RootDirectoriesAndFiles}" SelectedItem="{Binding SelectedFileOrFolder}">
     <TreeView.DataTemplates>
       <TreeDataTemplate DataType="models:HackyFolder" ItemsSource="{Binding Entries}">
         <TextBlock Margin="2" Text="{Binding Name}" FontWeight="Bold" />

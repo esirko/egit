@@ -4,11 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_UserList">
-  <ListBox Items="{Binding Users}">
+  <ListBox Items="{Binding Users}" SelectedItem="{Binding SelectedUser}">
     <ListBox.DataTemplates>
       <DataTemplate>
         <TextBlock Margin="2" Text="{Binding Name}" />
-</DataTemplate>
+      </DataTemplate>
     </ListBox.DataTemplates>
   </ListBox>
 </UserControl>

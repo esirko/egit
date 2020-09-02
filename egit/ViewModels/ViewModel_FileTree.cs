@@ -17,5 +17,16 @@ namespace egit.ViewModels
             {
                 return GitRepoEngine.HistoryFS.BaseFolder.Entries;
             } }
+
+        HackyFileOrFolder _SelectedFileOrFolder;
+        public HackyFileOrFolder SelectedFileOrFolder
+        {
+            get { return _SelectedFileOrFolder; }
+            set
+            {
+                _SelectedFileOrFolder = value;
+                GitRepoEngine.SelectedScopeChanged(_SelectedFileOrFolder);
+            }
+        }
     }
 }
