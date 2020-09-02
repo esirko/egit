@@ -12,6 +12,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Threading;
+using DynamicData;
 using egit.Models;
 using egit.ViewModels;
 using egit.Views;
@@ -33,7 +35,11 @@ namespace egit.Engine
         {
             if (selectedScope != null)
             {
-                CurrentViewOfCommits.Commits = new CommitViewEnumerable(selectedScope.History, CurrentSelectedBranch.IsCurrentRepositoryHead, LastStageAndWorkingDirectoryRefreshTime);
+                lock (LockToProtectCurrentViewOfCommits)
+                {
+                    CurrentViewOfCommitsIsHeadBranch = false;
+                    CurrentViewOfCommits.Commits = CreateCommitEnumerable(selectedScope.History, CurrentSelectedBranch.IsCurrentRepositoryHead);
+                }
             }
         }
 
@@ -440,6 +446,7 @@ namespace egit.Engine
                     Repo = null;
                     CurrentSelectedBranch = null;
                     MasterBranchCommits.Clear();
+                    CurrentViewOfCommitsIsHeadBranch = false; // TODO: the way I manage this is very hacky and I did it fast without much thought
                 }
 
                 CurrentRepoPath = repoPath;
@@ -461,7 +468,6 @@ namespace egit.Engine
                 UpdateStatus(1, "Before Starting");
                 UpdateStatus(2, "Before Starting");
                 UpdateStatus(3, "Before Starting");
-                UpdateStatus(4, "Before Starting");
 
                 // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
                 // was in the old code. This propagated to the variables NeedToReloadDiffCache.
@@ -469,20 +475,18 @@ namespace egit.Engine
                 Task t1 = new Task(async () => { await TraverseHeadBranchAsync(); });
                 Task t2 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
                 Task t3 = new Task(async () => { await DoGitStatusAsync(); });
-                Task t4 = new Task(async () => { await TraverseHistoryFSAsync(); });
                 t0.Start();
                 t1.Start();
                 t2.Start();
                 t3.Start();
-                t4.Start();
             }
         }
 
-        List<string> Statuses = new List<string>() { "", "", "", "", "" };
+        List<string> Statuses = new List<string>() { "", "", "", "" };
         void UpdateStatus(int index, string message)
         {
             Statuses[index] = message;
-            StatusBarText = Statuses[0] + " / " + Statuses[1] + " / " + Statuses[2] + " / " + Statuses[3] + " / " + Statuses[4];
+            StatusBarText = Statuses[0] + " / " + Statuses[1] + " / " + Statuses[2] + " / " + Statuses[3];
         } 
 
 
@@ -527,7 +531,7 @@ namespace egit.Engine
             CachedStage.Clear();
             CachedWorkingDirectory.Clear();
 
-            CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(DateTime.MinValue);
+            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(DateTime.MinValue);
 
             foreach (var item in Repo.RetrieveStatus())
             {
@@ -572,7 +576,7 @@ namespace egit.Engine
 
             LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
             ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
-            CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
+            CurrentViewOfCommits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
             if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
             {
                 RefreshListViewCommits2();
@@ -771,63 +775,62 @@ namespace egit.Engine
             UpdateStatus(2, "Done");
         }
 
-        private Task TraverseHistoryFSAsync()
-        {
-            /*
-            List<Tuple<TreeNode, TreeNode>> pendingTreeNodeAdditions = new List<Tuple<TreeNode, TreeNode>>();
-            List<string> pendingUserAdditions = new List<string>();
-            TraverseHistoryFS(rootNode, HistoryFS.BaseFolder, pendingTreeNodeAdditions);
-            */
-
-            return Task.CompletedTask;
-        }
-
-        /*
-        private void TraverseHistoryFS(TreeNode node, HackyFileOrFolder hackyFileOrFolder, List<Tuple<TreeNode, TreeNode>> pendingTreeNodeAdditions)
-        {
-            // This now happens on a worker thread.
-            for (int i = 0; i < hackyFileOrFolder.Entries.Count; i++)
-            {
-                string path = hackyFileOrFolder.Entries.Keys[i];
-                TreeNode[] foundNodes = node.Nodes.Find(path, false);
-                TreeNode subnode = foundNodes.Length > 0 ? foundNodes[0] : null;
-                bool preexisting = subnode != null;
-
-                if (!preexisting)
-                {
-                    subnode = new TreeNode(path);
-                    subnode.Tag = hackyFileOrFolder.Entries[path]; // I get an exception on this line sometimes
-                    subnode.Name = path;
-                }
-
-                HackyFileOrFolder next = hackyFileOrFolder.Entries[path];
-
-                TraverseHistoryFS(subnode, next, pendingTreeNodeAdditions);
-
-                if (!preexisting)
-                {
-                    pendingTreeNodeAdditions.Add(new Tuple<TreeNode, TreeNode>(node, subnode));
-                }
-            }
-        }
-*/
-
 
 
         private void FlushPendingMasterCommits(ref int nn, ref int k, ref List<Commit> pendingMasterCommits)
         {
-            for (int i = 0; i < pendingMasterCommits.Count; i++)
+            int numPreExistingMasterBranchCommits = MasterBranchCommits.Count;
+
+            MasterBranchCommits.AddRange(pendingMasterCommits);
+            nn += pendingMasterCommits.Count;
+
+            List<Commit> pendingMasterCommits2 = pendingMasterCommits.ToList();
+
+            lock (LockToProtectCurrentViewOfCommits)
             {
-                Commit c = pendingMasterCommits[i];
-                MasterBranchCommits.Add(c);
-
-                CurrentViewOfCommits.Commits = new CommitViewEnumerable(MasterBranchCommits, true);
-
-                nn++;
+                if (CurrentViewOfCommitsIsHeadBranch)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        // TODO: it's kind of awkward to have this dispatching to the UI thread here but not below... at least it works for now but it doesn't seem right.
+                        // Seems like I should `CreateCommitEnumerable` with an empty array (to initialze) and then *always* `AddRange`, instead of conditionally 
+                        // handling the initial and all subsequent cases. Also consider the lock. I haven't fully thought through all the thread-interaction cases.
+                        CurrentViewOfCommits.Commits.AddRange(
+                            Enumerable.Range(numPreExistingMasterBranchCommits, pendingMasterCommits2.Count).Zip(pendingMasterCommits2).Select(x => new CommitWrapper(x.First, x.Second))
+                        );
+                    });
+                }
+                else
+                {
+                    CurrentViewOfCommits.Commits = CreateCommitEnumerable(MasterBranchCommits, true);
+                    CurrentViewOfCommitsIsHeadBranch = true;
+                }
             }
+
             pendingMasterCommits.Clear();
         }
 
+        private ObservableCollection<CommitWrapper> CreateCommitEnumerable(List<Changelist> changelists)
+        {
+            ObservableCollection<CommitWrapper> oc = new ObservableCollection<CommitWrapper>(
+                Enumerable.Range(0, changelists.Count).Zip(changelists).Select(x => new CommitWrapper(x.First, x.Second))
+            );
+            return oc;
+        }
+
+        private ObservableCollection<CommitWrapper> CreateCommitEnumerable(List<Commit> commits, bool showWorkingDirectory = false)
+        {
+            ObservableCollection<CommitWrapper> oc = new ObservableCollection<CommitWrapper>(
+                Enumerable.Range(0, commits.Count).Zip(commits).Select(x => new CommitWrapper(x.First, x.Second))
+            );
+
+            if (showWorkingDirectory)
+            {
+                oc.Insert(0, new CommitWrapper(-2, LastStageAndWorkingDirectoryRefreshTime));
+                oc.Insert(1, new CommitWrapper(-1, LastStageAndWorkingDirectoryRefreshTime));
+            }
+            return oc;
+        }
 
         private Commit TraverseTreeFromCommitToCommitAndReturnFirstStep(Commit c, Commit destination)
         {
@@ -936,11 +939,11 @@ namespace egit.Engine
         {
             if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
             {
-                CurrentlyDisplayedFeatureBranch.Commits = new CommitViewEnumerable(ModelTransient.Changelists);
+                CurrentlyDisplayedFeatureBranch.Commits = CreateCommitEnumerable(ModelTransient.Changelists);
             }
             else
             {
-                CurrentlyDisplayedFeatureBranch.Commits = new CommitViewEnumerable(GetFeatureBranchCommits());
+                CurrentlyDisplayedFeatureBranch.Commits = CreateCommitEnumerable(GetFeatureBranchCommits());
             }
         }
 
@@ -1056,6 +1059,9 @@ namespace egit.Engine
         private string CurrentRepoPath;
 
         bool CurrentlyTraversingHeadBranch = false;
+
+        object LockToProtectCurrentViewOfCommits = new object();
+        bool CurrentViewOfCommitsIsHeadBranch = false;
 
 
         ObservableCollection<FileAndStatus> _CurrentlyDisplayedDiff;

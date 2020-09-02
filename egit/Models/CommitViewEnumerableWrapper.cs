@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -15,8 +16,8 @@ namespace egit.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private CommitViewEnumerable _CurrentViewOfCommits = new CommitViewEnumerable(new List<Changelist>());
-        public CommitViewEnumerable Commits
+        private ObservableCollection<CommitWrapper> _CurrentViewOfCommits = new ObservableCollection<CommitWrapper>(new List<CommitWrapper>() { new CommitWrapper(0) } );
+        public ObservableCollection<CommitWrapper> Commits
         {
             get { return _CurrentViewOfCommits; }
             set
@@ -64,6 +65,34 @@ namespace egit.Models
                 }
                 HandleMainSelectedCommitChanged(_SelectedCommit, secondSelectedCommit);
             }
+        }
+
+        internal void SetLastStageAndWorkingDirectoryRefreshTime(DateTime lastStageAndWorkingDirectoryRefreshTime)
+        {
+            LastStageAndWorkingDirectoryRefreshTime = lastStageAndWorkingDirectoryRefreshTime;
+
+            UpdateStageAndWorkingDirectoryRefreshTime();
+        }
+
+        private void UpdateStageAndWorkingDirectoryRefreshTime()
+        {
+            if (Commits != null && Commits.Count >= 2)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    if (Commits[i].SelfIndex < 0)
+                    {
+                        Commits[i].LastStageAndWorkingDirectoryRefreshTime = LastStageAndWorkingDirectoryRefreshTime;
+                    }
+                }
+            }
+        }
+
+        private DateTime LastStageAndWorkingDirectoryRefreshTime = DateTime.MinValue;
+
+        internal void HackyOnPropertyChanged(string v)
+        {
+            OnPropertyChanged(v);
         }
     }
 
