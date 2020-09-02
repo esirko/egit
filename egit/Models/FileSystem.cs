@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Avalonia.Threading;
 using LibGit2Sharp;
 
 namespace egit.Models
@@ -18,17 +19,16 @@ namespace egit.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        SortedList<string, HackyFileOrFolder> _Entries;
-        public SortedList<string, HackyFileOrFolder> Entries { get { return _Entries; }  set
+        // I guess we need to keep these collections in sync.. one is used for binding as an ObservableCollection, the other for sorting in a dictionary for fast lookup
+        Dictionary<string, HackyFileOrFolder> EntriesDictionary;
+        ObservableCollection<HackyFileOrFolder> _Entries;
+        public ObservableCollection<HackyFileOrFolder> Entries
+        {
+            get { return _Entries; }// return new ObservableCollection<HackyFileOrFolder>(EntriesDictionary.Values); }
+            set
             {
                 _Entries = value;
                 OnPropertyChanged();
-            }
-        }
-
-        public ObservableCollection<HackyFileOrFolder> SortedObservableEntries { get // TODO: does this really need to be ObservableCollection if the class is INotifyPropertyChangd?
-            {
-                return new ObservableCollection<HackyFileOrFolder>(Entries.Select(x => x.Value));
             }
         }
 
@@ -44,13 +44,15 @@ namespace egit.Models
 
         public HackyFileOrFolder(string n, HackyFileOrFolder p)
         {
-            Entries = new SortedList<string, HackyFileOrFolder>();
+            EntriesDictionary = new Dictionary<string, HackyFileOrFolder>(StringComparer.Ordinal);
+            Entries = new ObservableCollection<HackyFileOrFolder>();
             Name = n;
             Parent = p;
         }
 
         public void Clear()
         {
+            EntriesDictionary.Clear();
             Entries.Clear();
             History.Clear();
             Parent = null;
@@ -59,6 +61,42 @@ namespace egit.Models
         public string GetFullPath()
         {
             return (Parent != null) ? Parent.GetFullPath() + "/" + Name : Name;
+        }
+
+        internal bool TryGetValue(string key, out HackyFileOrFolder fileOrFolder)
+        {
+            return EntriesDictionary.TryGetValue(key, out fileOrFolder);
+        }
+
+        internal void Add(string key, HackyFileOrFolder fileOrFolder)
+        {
+            EntriesDictionary.Add(key, fileOrFolder);
+            OnPropertyChanged("Entries");
+            Dispatcher.UIThread.Post(() =>
+            {
+                int i = -1;
+                int k = Entries.Count;
+                while (k - i > 1)
+                {
+                    int j = (k - i) / 2 + i;
+                    int comparison = StringComparer.Ordinal.Compare(Entries[j].Name, fileOrFolder.Name);
+
+                    if (comparison > 0)
+                    {
+                        k = j;
+                    }
+                    else if (comparison < 0)
+                    {
+                        i = j;
+                    }
+                    else if (comparison == 0)
+                    {
+                        throw new Exception("Unexpected string match: this should have been culled out before getting here");
+                    }
+                }
+
+                Entries.Insert(k, fileOrFolder);
+            });
         }
     }
 
@@ -92,8 +130,28 @@ namespace egit.Models
             string[] directories = path.Split('/', '\\');
             for (int i = 0; i < directories.Length; i++)
             {
-                bool isFile = i == directories.Length - 1;
-                HackyFileOrFolder next;
+                if (!currentFolder.TryGetValue(directories[i], out HackyFileOrFolder fileOrFolder))
+                {
+                    bool isFile = i == directories.Length - 1;
+                    if (isFile)
+                    {
+                        fileOrFolder = new HackyFile(directories[i], currentFolder);
+                    }
+                    else
+                    {
+                        fileOrFolder = new HackyFolder(directories[i], currentFolder);
+                    }
+
+                    currentFolder.Add(directories[i], fileOrFolder);
+                }
+                if (fileOrFolder.History.Count == 0 || fileOrFolder.History.Last() != c1)
+                {
+                    fileOrFolder.History.Add(c1);
+                }
+                currentFolder = fileOrFolder;
+
+
+                /*
                 if (!currentFolder.Entries.ContainsKey(directories[i]))
                 {
                     HackyFileOrFolder fileOrFolder;
@@ -113,6 +171,7 @@ namespace egit.Models
                     next.History.Add(c1);
                 }
                 currentFolder = next;
+                */
             }
         }
 

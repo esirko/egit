@@ -15,7 +15,7 @@ namespace egit.ViewModels
 
         public ObservableCollection<HackyFileOrFolder> RootDirectoriesAndFiles { get
             {
-                return new ObservableCollection<HackyFileOrFolder>(GitRepoEngine.HistoryFS.BaseFolder.Entries.Select(x => x.Value));
+                return GitRepoEngine.HistoryFS.BaseFolder.Entries;
             } }
     }
 }

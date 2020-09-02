@@ -16,7 +16,7 @@ namespace egit.ViewModels
         {
             get
             {
-                return new ObservableCollection<HackyFileOrFolder>(GitRepoEngine.UserFS.BaseFolder.Entries.Select(x => x.Value));
+                return GitRepoEngine.UserFS.BaseFolder.Entries;
             }
         }
 

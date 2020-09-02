@@ -408,23 +408,42 @@ namespace egit.Engine
                     }
                 }
 
+                UpdateStatus(0, "Before Starting");
+                UpdateStatus(1, "Before Starting");
+                UpdateStatus(2, "Before Starting");
+                UpdateStatus(3, "Before Starting");
+                UpdateStatus(4, "Before Starting");
+
                 // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
                 // was in the old code. This propagated to the variables NeedToReloadDiffCache.
-                Task t2 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
-                Task t3 = new Task(async () => { await TraverseHeadBranchAsync(); });
-                Task t4 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
-                Task t5 = new Task(async () => { await DoGitStatusAsync(); });
-                Task t6 = new Task(async () => { await TraverseHistoryFSAsync(); });
+                Task t0 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
+                Task t1 = new Task(async () => { await TraverseHeadBranchAsync(); });
+                Task t2 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
+                Task t3 = new Task(async () => { await DoGitStatusAsync(); });
+                Task t4 = new Task(async () => { await TraverseHistoryFSAsync(); });
+                t0.Start();
+                t1.Start();
                 t2.Start();
                 t3.Start();
                 t4.Start();
-                t5.Start();
-                t6.Start();
             }
         }
 
+        List<string> Statuses = new List<string>() { "", "", "", "", "" };
+        void UpdateStatus(int index, string message)
+        {
+            Statuses[index] = message;
+            StatusBarText = Statuses[0] + " / " + Statuses[1] + " / " + Statuses[2] + " / " + Statuses[3] + " / " + Statuses[4];
+        } 
+
+
+
+
         private async Task RefreshComboBoxBranchesAsync()
         {
+            UpdateStatus(0, "Starting");
+            int numBranchesVisited = 0;
+
             string enumeratingBranches = "Enumerating branches...";
             Branches = new List<string>() { enumeratingBranches };
             SelectedBranch = enumeratingBranches;
@@ -441,13 +460,21 @@ namespace egit.Engine
                     branches.Add(b.FriendlyName);
                 }
                 await Task.Yield();
+                numBranchesVisited++;
+                UpdateStatus(0, "NumBranches: " + numBranchesVisited);
+                if (numBranchesVisited / 100 == numBranchesVisited/100.0)
+                {
+                    //await Task.Delay(30);
+                }
             }
             Branches = branches;
             SelectedBranch = Branches[IndexOfHeadBranch];
+            UpdateStatus(0, "Done");
         }
 
         private async Task DoGitStatusAsync()
         {
+            UpdateStatus(3, "Starting");
             CachedStage.Clear();
             CachedWorkingDirectory.Clear();
 
@@ -492,6 +519,7 @@ namespace egit.Engine
                 }
                 await Task.Yield();
             }
+            UpdateStatus(3, "Done with first part");
 
             ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
             CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
@@ -502,12 +530,15 @@ namespace egit.Engine
             }
 
             LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
+            UpdateStatus(3, "Done");
         }
 
         private async Task TraverseHeadBranchAsync()
         {
+            UpdateStatus(1, "Starting");
             if (CurrentSelectedBranch == null)
             {
+                UpdateStatus(1, "Exiting early");
                 return;
             }
 
@@ -526,6 +557,7 @@ namespace egit.Engine
 
             List<Commit> orphanedCommits = new List<Commit>();
             bool TraversalMethod2 = true;
+            int numCommitsVisited = 0;
 
             // Note: foreach (LogEntry le in Repo.Commits.QueryBy("VssfSdkSample/")) .. only works in prerelease version and too slow .. and doesn't even return the PR commits..
             foreach (Commit c in CurrentSelectedBranch.Commits)
@@ -611,16 +643,26 @@ namespace egit.Engine
                     k++;
                 }
                 await Task.Yield();
+                numCommitsVisited++;
+                UpdateStatus(1, $"NumCommits: {numCommitsVisited} [{k}, {nn}]");
+                if (numCommitsVisited / 100 == numCommitsVisited / 100.0)
+                {
+                    //await Task.Delay(30);
+                }
+
             }
 
             FlushPendingMasterCommits(ref nn, ref k, ref pendingMasterCommits);
             CurrentlyTraversingHeadBranch = false;
+            UpdateStatus(1, "Done");
         }
 
         private async Task AnalyzeHeadBranchCommitsAsync()
         {
+            UpdateStatus(2, "Starting");
             if (NeedToReloadDiffCache)
             {
+                UpdateStatus(2, "Reloading diff cache");
                 DiffCache.Clear();
 
                 if (!string.IsNullOrEmpty(CurrentRepoPath))
@@ -641,6 +683,7 @@ namespace egit.Engine
                 }
             }
 
+            int numWhileTrueIterations = 0;
             int i0 = 0;
             while (true)
             {
@@ -654,6 +697,13 @@ namespace egit.Engine
                     PopulateHistoryFileSystemWithCommit(MasterBranchCommits[i], MasterBranchCommits[i + 1]);
                     NumCommitsAnalyzed = i + 1;
                     // TODO: use cancellation token here
+
+                    numWhileTrueIterations++;
+                    UpdateStatus(2, $"Status: {numWhileTrueIterations}, i0,i,n = ({i0}, {i}, {n})");
+                    if (i / 100 == i / 100.0)
+                    {
+                        //await Task.Delay(30);
+                    }
                 }
 
                 i0 = NumCommitsAnalyzed;
@@ -664,9 +714,12 @@ namespace egit.Engine
                 }
                 // TODO: use cancellation token here and everywhere there's a Task.Yield
                 await Task.Yield();
+
+                numWhileTrueIterations++;
             }
 
             CommitAnalyzerStopwatch.Stop();
+            UpdateStatus(2, "Done");
         }
 
         private Task TraverseHistoryFSAsync()

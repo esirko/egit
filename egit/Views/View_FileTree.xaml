@@ -9,7 +9,7 @@
   <!-- https://www.nequalsonelifestyle.com/2019/06/18/avalonia-treeview-tutorial/ -->
   <TreeView Items="{Binding RootDirectoriesAndFiles}">
     <TreeView.DataTemplates>
-      <TreeDataTemplate DataType="models:HackyFolder" ItemsSource="{Binding SortedObservableEntries}">
+      <TreeDataTemplate DataType="models:HackyFolder" ItemsSource="{Binding Entries}">
         <TextBlock Margin="2" Text="{Binding Name}" FontWeight="Bold" />
       </TreeDataTemplate>
       <DataTemplate DataType="models:HackyFile">
