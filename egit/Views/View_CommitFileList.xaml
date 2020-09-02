@@ -8,5 +8,17 @@
             IsReadOnly="True" GridLinesVisibility="All"
             RowBackground="Transparent" AlternatingRowBackground="Transparent"
             DataContext="{Binding GitRepoEngine}" Items="{Binding CurrentlyDisplayedDiff}" DoubleTapped="HandleDoubleClick" KeyDown="HandleKeyDown">
+    <DataGrid.ContextMenu>
+      <ContextMenu x:Name="MyContextMenu">
+        <MenuItem x:Name="CMDiff" Header="Diff" />
+        <MenuItem x:Name="CMFindInFileTree" Header="Find in file tree" />
+        <MenuItem x:Name="CMFindInExplorer" Header="Find in explorer" />
+        <MenuItem Header="-" />
+        <MenuItem x:Name="CMMoveToChangelist" Header="Move to changelist..." />
+        <MenuItem x:Name="CMSubmit" Header="Submit..." />
+        <MenuItem Header="-" />
+        <MenuItem x:Name="CMRevert" Header="Revert..." />
+      </ContextMenu>
+    </DataGrid.ContextMenu>
   </DataGrid>
 </UserControl>

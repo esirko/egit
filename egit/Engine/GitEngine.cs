@@ -131,6 +131,20 @@ namespace egit.Engine
             }
         }
 
+        internal void MoveFilesToChangelist(List<FileAndStatus> files, int changelistId, string changelistDescription)
+        {
+            ModelTransient.MoveFilesToChangelist(changelistId, files.Select(x => x.FileName).ToList(), changelistDescription);
+            ModelTransient.SaveChangelistsToDisk();
+
+            RefreshListViewCommits2();
+            RefreshListOfDiffFiles();
+        }
+
+        internal void SelectFileInFileTree(string fileName)
+        {
+            MessageBoxManager.GetMessageBoxStandardWindow("", "TODO: FindTreeNodeByPath").Show();
+        }
+
         private void HandleSecondarySelectedCommitChanged(CommitWrapper c1w, CommitWrapper c0w)
         {
             if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory)
@@ -1151,6 +1165,5 @@ namespace egit.Engine
                 OnPropertyChanged();
             }
         }
-
     }
 }
