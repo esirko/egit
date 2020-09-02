@@ -1,15 +1,12 @@
-﻿using System.Collections.Generic;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
-using egit.ViewModels;
 
 namespace egit.Views
 {
-    public class View_RepoInfo : UserControl
+    public class View_UserList : UserControl
     {
-        public View_RepoInfo()
+        public View_UserList()
         {
             this.InitializeComponent();
         }
