@@ -55,6 +55,17 @@ namespace egit.Views
                 Gesture = new KeyGesture(Key.Enter),
                 Command = new HackyCommand(HandleEnterKeyPressed),
             });
+            MyDataGrid.LoadingRow += MyDataGrid_LoadingRow;
+        }
+
+        private void MyDataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        {
+            FileAndStatus fileAndStatus = e.Row.DataContext as FileAndStatus;
+            if (fileAndStatus != null)
+            {
+                int changelistIndex = GitEngine.Get().ModelTransient.GetChangelistForFile(fileAndStatus.FileName);
+                ViewUtils.ColorRowByChangelist(e.Row, changelistIndex);
+            }
         }
 
         private void SpawnExternalDiff()

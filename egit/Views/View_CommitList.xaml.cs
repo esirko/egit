@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using DynamicData;
 using egit.Models;
 using egit.ViewModels;
@@ -31,20 +32,20 @@ namespace egit.Views
             AvaloniaXamlLoader.Load(this);
 
             DataGridCommitList = this.Find<DataGrid>("DataGrid_CommitList");
-            //DataGridCommitList.SelectionChanged += DataGridCommitList_SelectionChanged;
+            DataGridCommitList.LoadingRow += DataGridCommitList_LoadingRow;
         }
 
-        /*
-        public List<CommitWrapper> SelectedItems = new List<CommitWrapper>();
-        private void DataGridCommitList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void DataGridCommitList_LoadingRow(object sender, DataGridRowEventArgs e)
         {
-            SelectedItems.Clear();
-            foreach (CommitWrapper cw in DataGridCommitList.SelectedItems)
+            CommitWrapper cw = e.Row.DataContext as CommitWrapper;
+            if (cw?.Changelist != null)
             {
-                SelectedItems.Add(cw);
+                if (int.TryParse(cw.Id, out int intid))
+                {
+                    ViewUtils.ColorRowByChangelist(e.Row, intid);
+                }
             }
         }
-        */
 
         public DataGrid DataGridCommitList;
     }
