@@ -5,7 +5,9 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_CommitList">
   <!-- https://www.nequalsonelifestyle.com/2019/06/13/avalonia-datagrid-getting-started/ -->
-  <DataGrid x:Name="DataGrid_CommitList" AutoGenerateColumns="True" DataContext="{Binding CommitList}" Items="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" >
+  <DataGrid x:Name="DataGrid_CommitList" AutoGenerateColumns="True" 
+            RowBackground="Transparent" AlternatingRowBackground="Transparent" 
+            DataContext="{Binding CommitList}" Items="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" >
 
   </DataGrid> 
 </UserControl>

@@ -5,11 +5,11 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="egit.Views.View_CommitInfo">
   <DockPanel>
-    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
-      <TextBlock Width="100" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitInfo}"></TextBlock>
-      <TextBlock Width="100" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitNumFiles}"></TextBlock>
-      <TextBlock Width="100" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitParents}"></TextBlock>
-    </StackPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="3*,3*,3*" HorizontalAlignment="Stretch">
+      <TextBlock Grid.Column="0" HorizontalAlignment="Stretch" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitInfo}"></TextBlock>
+      <TextBlock Grid.Column="1" HorizontalAlignment="Stretch" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitNumFiles}"></TextBlock>
+      <TextBlock Grid.Column="2" HorizontalAlignment="Stretch" DataContext="{Binding GitRepoEngine}" Text="{Binding CommitParents}"></TextBlock>
+    </Grid>
     <TextBlock DataContext="{Binding GitRepoEngine}" Text="{Binding CommitMessage}"></TextBlock>
   </DockPanel>
 </UserControl>
