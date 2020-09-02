@@ -21,5 +21,8 @@
     <Setting Name="TempDiffFileDir" Type="System.String" Scope="User">
       <Value Profile="(Default)">C:\projects\Temp\egitDiffs</Value>
     </Setting>
+    <Setting Name="MaxDiffsToSpawn" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

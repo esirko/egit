@@ -37,6 +37,37 @@ namespace egit.Engine
             }
         }
 
+        public static string WrapFilename(string filename)
+        {
+            if (filename.Contains(" ")) { filename = "\"" + filename + "\""; }
+            return filename;
+        }
+
+        internal void SpawnExternalDiff(List<FileAndStatus> files)
+        {
+            for (int i = 0; i < Math.Min(files.Count, Settings.Default.MaxDiffsToSpawn); i++)
+            {
+                FileAndStatus fs = files[i];
+                if (fs.Status == ChangeKind.Modified || fs.Status == ChangeKind.Deleted || fs.Status == ChangeKind.Added || fs.Status == ChangeKind.Renamed)
+                {
+                    string relFilePath1 = fs.FileName;
+                    string relFilePath0 = (fs.Status == ChangeKind.Renamed) ? fs.OldFileName : fs.FileName;
+
+                    string filename0 = CurrentDiffCommit0.GetFileToDiffAndCreateIfNecessary(Repo, relFilePath0);
+                    string filename1 = CurrentDiffCommit1.GetFileToDiffAndCreateIfNecessary(Repo, relFilePath1);
+
+                    Process p = new Process();
+                    p.StartInfo.FileName = @"C:\Program Files (x86)\WinMerge\WinMergeU.exe";
+                    p.StartInfo.Arguments = WrapFilename(filename0) + " " + WrapFilename(filename1);
+                    p.Start();
+                }
+                else
+                {
+                    MessageBoxManager.GetMessageBoxStandardWindow("", fs.FileName + " isn't a modified/deleted/added/renamed file").Show();
+                }
+            }
+        }
+
         public static GitEngine Get()
         {
             if (_Singleton == null)

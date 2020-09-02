@@ -84,5 +84,17 @@ namespace egit {
                 this["TempDiffFileDir"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3")]
+        public int MaxDiffsToSpawn {
+            get {
+                return ((int)(this["MaxDiffsToSpawn"]));
+            }
+            set {
+                this["MaxDiffsToSpawn"] = value;
+            }
+        }
     }
 }

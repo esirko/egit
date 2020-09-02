@@ -6,7 +6,6 @@
              x:Class="egit.Views.View_CommitFileList">
   <DataGrid AutoGenerateColumns="True" 
             RowBackground="Transparent" AlternatingRowBackground="Transparent" 
-            DataContext="{Binding GitRepoEngine}" Items="{Binding CurrentlyDisplayedDiff}" >
-
+            DataContext="{Binding GitRepoEngine}" Items="{Binding CurrentlyDisplayedDiff}" DoubleTapped="HandleDoubleClick">
   </DataGrid>
 </UserControl>
