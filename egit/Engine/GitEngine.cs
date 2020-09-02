@@ -539,6 +539,7 @@ namespace egit.Engine
             }
             UpdateStatus(3, "Done with first part");
 
+            LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
             ModelTransient.RefreshChangelistsFromWorkingDirectory(CachedWorkingDirectory);
             CurrentViewOfCommits.Commits.SetLastStageAndWorkingDirectoryRefreshTime(LastStageAndWorkingDirectoryRefreshTime);
             if (CurrentDiffCommit1.SnapshotType == SnapshotType.WorkingDirectory || CurrentDiffCommit1.SnapshotType == SnapshotType.Stage)
@@ -547,7 +548,6 @@ namespace egit.Engine
                 RefreshListOfDiffFiles();
             }
 
-            LastStageAndWorkingDirectoryRefreshTime = DateTime.Now;
             UpdateStatus(3, "Done");
         }
 
