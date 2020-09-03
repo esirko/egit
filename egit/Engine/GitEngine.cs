@@ -39,7 +39,56 @@ namespace egit.Engine
                 {
                     CurrentViewOfCommitsIsHeadBranch = false;
                     CurrentViewOfCommits.Commits = CreateCommitEnumerable(selectedScope.History, CurrentSelectedBranch.IsCurrentRepositoryHead);
+                    CurrentScope = selectedScope.GetFullPath();
+                    IsCurrentlyScoped = true;
                 }
+            }
+            else
+            {
+                ResetScope(); // not sure if this code path ever happens..
+            }
+        }
+
+
+        public void ResetScope()
+        {
+            lock (LockToProtectCurrentViewOfCommits)
+            {
+                // TODO: we shouldn't have to recreate CurrentViewOfCommits.Commits. 
+                // Also the whole way we switch between lists for CurrentViewOfCommits.Commits is pretty hacky. I think we wouldn't even update the scoped
+                // commit list (like we do for master) as new commits are analyzed and added to the HistoryFS, so the whole system needs a revisit.
+                CurrentViewOfCommits.Commits = CreateCommitEnumerable(MasterBranchCommits, true);
+                CurrentViewOfCommitsIsHeadBranch = true;
+                CurrentScope = "";
+                IsCurrentlyScoped = false;
+            }
+        }
+
+        private string _CurrentScope;
+        public string CurrentScope
+        {
+            get
+            {
+                return _CurrentScope;
+            }
+            set
+            {
+                _CurrentScope = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _IsCurrentlyScoped;
+        public bool IsCurrentlyScoped
+        {
+            get
+            {
+                return _IsCurrentlyScoped;
+            }
+            set
+            {
+                _IsCurrentlyScoped = value;
+                OnPropertyChanged();
             }
         }
 
