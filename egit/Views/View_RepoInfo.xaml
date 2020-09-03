@@ -25,9 +25,10 @@
       <TextBox Width="200" DataContext="{Binding GitRepoEngine}" Text="{Binding BranchFilter}"></TextBox>
 
     </StackPanel>
-    <StackPanel Orientation="Horizontal">
-      <TextBlock Margin="4" Width="40">Path</TextBlock>
-      <TextBox Width="400"></TextBox>
+    <StackPanel DataContext="{Binding GitRepoEngine}" Orientation="Horizontal" IsVisible="{Binding IsCurrentlyScoped}">
+      <TextBlock Margin="4" Width="40">Scope</TextBlock>
+      <TextBox Width="400" Text="{Binding CurrentScope}"></TextBox>
+      <Button Command="{Binding ResetScope}">Reset scope</Button>
     </StackPanel>
   </StackPanel>
 </UserControl>

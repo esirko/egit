@@ -39,7 +39,56 @@ namespace egit.Engine
                 {
                     CurrentViewOfCommitsIsHeadBranch = false;
                     CurrentViewOfCommits.Commits = CreateCommitEnumerable(selectedScope.History, CurrentSelectedBranch.IsCurrentRepositoryHead);
+                    CurrentScope = selectedScope.GetFullPath();
+                    IsCurrentlyScoped = true;
                 }
+            }
+            else
+            {
+                ResetScope(); // not sure if this code path ever happens..
+            }
+        }
+
+
+        public void ResetScope()
+        {
+            lock (LockToProtectCurrentViewOfCommits)
+            {
+                // TODO: we shouldn't have to recreate CurrentViewOfCommits.Commits. 
+                // Also the whole way we switch between lists for CurrentViewOfCommits.Commits is pretty hacky. I think we wouldn't even update the scoped
+                // commit list (like we do for master) as new commits are analyzed and added to the HistoryFS, so the whole system needs a revisit.
+                CurrentViewOfCommits.Commits = CreateCommitEnumerable(MasterBranchCommits, true);
+                CurrentViewOfCommitsIsHeadBranch = true;
+                CurrentScope = "";
+                IsCurrentlyScoped = false;
+            }
+        }
+
+        private string _CurrentScope;
+        public string CurrentScope
+        {
+            get
+            {
+                return _CurrentScope;
+            }
+            set
+            {
+                _CurrentScope = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _IsCurrentlyScoped;
+        public bool IsCurrentlyScoped
+        {
+            get
+            {
+                return _IsCurrentlyScoped;
+            }
+            set
+            {
+                _IsCurrentlyScoped = value;
+                OnPropertyChanged();
             }
         }
 
@@ -71,6 +120,40 @@ namespace egit.Engine
                 {
                     MessageBoxManager.GetMessageBoxStandardWindow("", fs.FileName + " isn't a modified/deleted/added/renamed file").Show();
                 }
+            }
+        }
+
+        internal void DeleteChangelists(List<CommitWrapper> cws)
+        {
+            string confirmationMessage = "Delete the following changelists?" + Environment.NewLine + Environment.NewLine;
+            int numValidChangelistsToDelete = 0;
+            for (int i = 0; i < cws.Count; i++)
+            {
+                if (cws[i].Changelist != null)
+                {
+                    int j = cws[i].N;
+                    confirmationMessage += "[" + j + "] " + ModelTransient.Changelists[j].Description + " (" + ModelTransient.Changelists[j].Files.Count + ")" + Environment.NewLine;
+                    numValidChangelistsToDelete++;
+                }
+            }
+
+            if (numValidChangelistsToDelete > 0)
+            {
+                //if (MessageBox.Show(confirmationMessage, "Delete changelists", MessageBoxButtons.OKCancel) == DialogResult.OK)
+                MessageBoxManager.GetMessageBoxStandardWindow("TODO: Delete changelists?", confirmationMessage).Show();
+                {
+                    /*
+                    ModelTransient.DeleteChangelists(cws.Select(cw => cw.N).ToList());
+                    ModelTransient.SaveChangelistsToDisk();
+
+                    RefreshListViewCommits2();
+                    RefreshListOfDiffFiles();
+                    */
+                }
+            }
+            else
+            {
+                MessageBoxManager.GetMessageBoxStandardWindow("Delete changelists error", "There were no changelists selected to delete").Show();
             }
         }
 

@@ -3,9 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using DynamicData;
+using egit.Engine;
 using egit.Models;
 using egit.ViewModels;
 
@@ -23,7 +25,8 @@ namespace egit.Views
             // Hack to get around inability to data-bind to SelectedItems
             if (DataContext is ViewModel_CommitList)
             {
-                ((ViewModel_CommitList)DataContext).RegisterView(this);
+                bool isSecondary = ((ViewModel_CommitList)DataContext).RegisterView(this);
+                MyContextMenu.IsVisible = isSecondary;
             }
         }
 
@@ -33,6 +36,24 @@ namespace egit.Views
 
             DataGridCommitList = this.Find<DataGrid>("DataGrid_CommitList");
             DataGridCommitList.LoadingRow += DataGridCommitList_LoadingRow;
+
+            MyContextMenu = this.Find<ContextMenu>("MyContextMenu");
+
+            MenuItem cmDeleteChangelist = this.Find<MenuItem>("CMDeleteChangelist");
+            cmDeleteChangelist.Click += CmDeleteChangelist_Click;
+        }
+
+        private void CmDeleteChangelist_Click(object sender, RoutedEventArgs e)
+        {
+            List<CommitWrapper> cws = new List<CommitWrapper>();
+            IList selectedItems = DataGridCommitList.SelectedItems;
+            for (int i = 0; i < selectedItems.Count; i++)
+            {
+                cws.Add(selectedItems[i] as CommitWrapper);
+            }
+
+            GitEngine.Get().DeleteChangelists(cws);
+
         }
 
         private void DataGridCommitList_LoadingRow(object sender, DataGridRowEventArgs e)
@@ -48,5 +69,6 @@ namespace egit.Views
         }
 
         public DataGrid DataGridCommitList;
+        ContextMenu MyContextMenu;
     }
 }
