@@ -74,6 +74,40 @@ namespace egit.Engine
             }
         }
 
+        internal void DeleteChangelists(List<CommitWrapper> cws)
+        {
+            string confirmationMessage = "Delete the following changelists?" + Environment.NewLine + Environment.NewLine;
+            int numValidChangelistsToDelete = 0;
+            for (int i = 0; i < cws.Count; i++)
+            {
+                if (cws[i].Changelist != null)
+                {
+                    int j = cws[i].N;
+                    confirmationMessage += "[" + j + "] " + ModelTransient.Changelists[j].Description + " (" + ModelTransient.Changelists[j].Files.Count + ")" + Environment.NewLine;
+                    numValidChangelistsToDelete++;
+                }
+            }
+
+            if (numValidChangelistsToDelete > 0)
+            {
+                //if (MessageBox.Show(confirmationMessage, "Delete changelists", MessageBoxButtons.OKCancel) == DialogResult.OK)
+                MessageBoxManager.GetMessageBoxStandardWindow("TODO: Delete changelists?", confirmationMessage).Show();
+                {
+                    /*
+                    ModelTransient.DeleteChangelists(cws.Select(cw => cw.N).ToList());
+                    ModelTransient.SaveChangelistsToDisk();
+
+                    RefreshListViewCommits2();
+                    RefreshListOfDiffFiles();
+                    */
+                }
+            }
+            else
+            {
+                MessageBoxManager.GetMessageBoxStandardWindow("Delete changelists error", "There were no changelists selected to delete").Show();
+            }
+        }
+
         public static GitEngine Get()
         {
             if (_Singleton == null)

@@ -39,7 +39,7 @@ namespace egit.ViewModels
             }
         }
 
-        internal void RegisterView(View_CommitList view_CommitList)
+        internal bool RegisterView(View_CommitList view_CommitList)
         {
             if (IsPrimary)
             {
@@ -49,6 +49,7 @@ namespace egit.ViewModels
             {
                 GitRepoEngine.CurrentlyDisplayedFeatureBranch.RegisterCommitList(view_CommitList);
             }
+            return IsSecondary;
         }
 
         private readonly bool IsPrimary;

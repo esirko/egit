@@ -9,6 +9,10 @@
             IsReadOnly="True" GridLinesVisibility="All"
             RowBackground="Transparent" AlternatingRowBackground="Transparent" 
             DataContext="{Binding CommitList}" Items="{Binding Commits}" SelectedItem="{Binding SelectedCommit, Mode=TwoWay}" >
-
+    <DataGrid.ContextMenu>
+      <ContextMenu x:Name="MyContextMenu">
+        <MenuItem x:Name="CMDeleteChangelist" Header="Delete changelist ..." />
+      </ContextMenu>
+    </DataGrid.ContextMenu>
   </DataGrid> 
 </UserControl>
