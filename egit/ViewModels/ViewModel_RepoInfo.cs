@@ -29,7 +29,7 @@ namespace egit.ViewModels
         {
             _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
             Initialized = true;
-            GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
+            GitEngine.Get().StartTraversingNewRepo(_SelectedRepoOrOption);
         }
 
         private bool Initialized = false;
@@ -87,7 +87,7 @@ namespace egit.ViewModels
                         {
                             Settings.Default.LastSelectedLocalRepo = _SelectedRepoOrOption;
                             Settings.Default.Save();
-                            GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
+                            GitEngine.Get().StartTraversingNewRepo(_SelectedRepoOrOption);
                         }
                         OnPropertyChanged();
                     }

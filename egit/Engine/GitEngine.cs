@@ -529,58 +529,80 @@ namespace egit.Engine
             }
         }
 
-        private List<string> _Branches;
-        public List<string> Branches { get { return _Branches; } private set { _Branches = value; OnPropertyChanged(); }  }
+        private List<BranchWrapper> _Branches3;
+        public List<BranchWrapper> Branches3 { get { return _Branches3; } private set { _Branches3 = value; OnPropertyChanged(); }  }
 
-        private string _SelectedBranch;
-        public string SelectedBranch { get { return _SelectedBranch; } set { _SelectedBranch = value; OnPropertyChanged(); } }
+        private BranchWrapper _SelectedBranch3;
+        public BranchWrapper SelectedBranch3
+        {
+            get { return _SelectedBranch3; }
+            set
+            {
+                _SelectedBranch3 = value;
+                if (SensitiveToBranchComboBoxChanges)
+                {
+                    CurrentSelectedBranch = SelectedBranch3?.Branch;
+                }
+                Task t00 = new Task(async () => { await StartTraversingRepoAsync(false); });
+                t00.Start();
+                OnPropertyChanged();
+            }
+        }
 
-        public void StartTraversingRepo(string repoPath)
+        public void StartTraversingNewRepo(string repoPath)
         {
             if (repoPath != CurrentRepoPath)
             {
                 CurrentRepoPath = repoPath;
-                Task t00 = new Task(async () => { await StartTraversingRepoAsync(); });
+                Task t00 = new Task(async () => { await StartTraversingRepoAsync(true); });
                 t00.Start();
             }
         }
 
-        CancellationTokenSource CancellationTokenSource = null;
+        CancellationTokenSource[] CancellationTokenSources = new CancellationTokenSource[4];
         AutoResetEvent[] AutoResetEvents = new AutoResetEvent[4];
+        bool SensitiveToBranchComboBoxChanges = true;
 
         void Log(string s)
         {
             Debug.WriteLine($"[{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] {s}");
         }
 
-        private async Task StartTraversingRepoAsync()
+        private async Task StartTraversingRepoAsync(bool newRepo)
         {
-            if (CancellationTokenSource != null)
-            {
-                CancellationTokenSource.Cancel();
-            }
+            int i0 = newRepo ? 0 : 1;
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 1; i < 4; i++)
             {
+                if (CancellationTokenSources[i] != null)
+                {
+                    CancellationTokenSources[i].Cancel();
+                }
                 AutoResetEvents[i].WaitOne(); // This happens outside the (CancellationTokenSource != null) if-block above because the initial state is true
             }
 
-            if (Repo != null)
+            HistoryFS.Clear();
+            UserFS.Clear();
+            MasterBranchCommits.Clear();
+            CurrentViewOfCommitsIsHeadBranch = false; // TODO: the way I manage this is very hacky and I did it fast without much thought
+            NumCommitsAnalyzed = 0;
+            CurrentDiffCommit0.SnapshotType = SnapshotType.Unknown;
+            CurrentDiffCommit1.SnapshotType = SnapshotType.Unknown;
+
+            if (string.IsNullOrEmpty(CurrentRepoPath))
             {
-                HistoryFS.Clear();
-                UserFS.Clear();
-                Repo.Dispose();
-                Repo = null;
-                CurrentSelectedBranch = null;
-                MasterBranchCommits.Clear();
-                CurrentViewOfCommitsIsHeadBranch = false; // TODO: the way I manage this is very hacky and I did it fast without much thought
-                NumCommitsAnalyzed = 0;
-                CurrentDiffCommit0.SnapshotType = SnapshotType.Unknown;
-                CurrentDiffCommit1.SnapshotType = SnapshotType.Unknown;
+                return; // TODO: under what conditions is this possible? I'm not sure if this is necessary or what it's trying to protect
             }
 
-            if (!string.IsNullOrEmpty(CurrentRepoPath))
+            if (newRepo)
             {
+                if (Repo != null)
+                {
+                    Repo.Dispose();
+                    Repo = null;
+                    CurrentSelectedBranch = null;
+                }
+
                 if (Repository.IsValid(CurrentRepoPath))
                 {
                     Repo = new Repository(CurrentRepoPath);
@@ -590,23 +612,27 @@ namespace egit.Engine
                 {
                     await MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}").Show();
                 }
+            }
 
-                if (Repo != null)
+            if (Repo != null)
+            {
+                if (newRepo)
                 {
-                    CancellationTokenSource = new CancellationTokenSource();
-                    CancellationToken cancellationToken = CancellationTokenSource.Token;
-
-                    // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
-                    // was in the old code. This propagated to the variables NeedToReloadDiffCache.
-                    Task t0 = new Task(async () => { await DoCancelableWork(0, RefreshComboBoxBranchesAsync, cancellationToken); });
-                    Task t1 = new Task(async () => { await DoCancelableWork(1, TraverseHeadBranchAsync, cancellationToken); });
-                    Task t2 = new Task(async () => { await DoCancelableWork(2, AnalyzeHeadBranchCommitsAsync, cancellationToken); });
-                    Task t3 = new Task(async () => { await DoCancelableWork(3, DoGitStatusAsync, cancellationToken); });
+                    CancellationTokenSources[0] = new CancellationTokenSource();
+                    Task t0 = new Task(async () => { await DoCancelableWork(0, RefreshComboBoxBranchesAsync, CancellationTokenSources[0].Token); });
                     t0.Start();
-                    t1.Start();
-                    t2.Start();
-                    t3.Start();
                 }
+
+                CancellationTokenSources[1] = new CancellationTokenSource();
+                CancellationTokenSources[2] = new CancellationTokenSource();
+                CancellationTokenSources[3] = new CancellationTokenSource();
+
+                Task t1 = new Task(async () => { await DoCancelableWork(1, TraverseHeadBranchAsync, CancellationTokenSources[1].Token); });
+                Task t2 = new Task(async () => { await DoCancelableWork(2, AnalyzeHeadBranchCommitsAsync, CancellationTokenSources[2].Token); });
+                Task t3 = new Task(async () => { await DoCancelableWork(3, DoGitStatusAsync, CancellationTokenSources[3].Token); });
+                t1.Start();
+                t2.Start();
+                t3.Start();
             }
         }
 
@@ -640,22 +666,22 @@ namespace egit.Engine
             UpdateStatus(0, startTime, "Starting");
             int numBranchesVisited = 0;
 
-            string enumeratingBranches = "Enumerating branches...";
-            Branches = new List<string>() { enumeratingBranches };
-            SelectedBranch = enumeratingBranches;
+            SensitiveToBranchComboBoxChanges = false;
+            SelectedBranch3 = new BranchWrapper(null);
+            Branches3 = new List<BranchWrapper>() { SelectedBranch3 };
 
-            List<string> branches = new List<string>();
+            List<BranchWrapper> branches3 = new List<BranchWrapper>();
+            Branch headBranch = null;
             foreach (Branch b in Repo.Branches)
             {
-                if (!b.FriendlyName.StartsWith("full")) // TODO: what is this? Probably a remnant of something that can be deleted now
-                { 
-                    // TODO: On VSO, my branch was somehow set to releases/m159_ghub_sps even though the actual branch name is releases/M159_ghub_sps (difference in casing) ... this caused the branch to not be found as the current head branch ... not sure how to best handle
-                    // TODO: also, won't this crash if you're on a detached head? (By leaving IndexOfHeadBranch = -1 and then out-of-boundsing below)
-                    if (b.IsCurrentRepositoryHead)
-                    {
-                        IndexOfHeadBranch = branches.Count;
-                    }
-                    branches.Add(b.FriendlyName);
+                BranchWrapper bw = new BranchWrapper(b);
+                branches3.Add(bw);
+                // TODO: On VSO, my branch was somehow set to releases/m159_ghub_sps even though the actual branch name is releases/M159_ghub_sps (difference in casing) ... this caused the branch to not be found as the current head branch ... not sure how to best handle
+                // TODO: handle detached head
+                if (b.IsCurrentRepositoryHead)
+                {
+                    headBranch = b;
+                    //SelectedBranch3 = bw;
                 }
                 await Task.Yield();
                 numBranchesVisited++;
@@ -666,8 +692,9 @@ namespace egit.Engine
                 }
                 cancellationToken.ThrowIfCancellationRequested();
             }
-            Branches = branches;
-            SelectedBranch = Branches[IndexOfHeadBranch];
+            Branches3 = branches3;
+            SelectedBranch3 = Branches3.FirstOrDefault(bw => bw.Branch == headBranch);
+            SensitiveToBranchComboBoxChanges = true;
             UpdateStatus(0, startTime, "Done");
         }
 
@@ -1193,7 +1220,6 @@ namespace egit.Engine
         }
 
         internal Branch CurrentSelectedBranch = null;
-        internal int IndexOfHeadBranch = -1; // TODO: refactor this, shouldn't store as int
 
 
         internal DateTime LastStageAndWorkingDirectoryRefreshTime = DateTime.MinValue;
