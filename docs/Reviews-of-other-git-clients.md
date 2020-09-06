@@ -25,7 +25,7 @@ But... it doesn't have the file tree browser (criterion #9).
 
 Not free.
 
-I'm having trouble just seeing the commit list view of the current HEAD branch. I still don't know how to get to just the HEAD branch without searching for it in the list. Even if there's a way, I haven't found it in a few minutes of looking, so the UI is not the best.
+I'm having trouble just seeing the commit list view of the current HEAD branch. I still don't know how to get to just the HEAD branch without searching for it in the list. Even if there's a way, I haven't found it in a few minutes of looking, so the UI is not the clearest.
 
 When you click two commits, it doesn't do the normal thing where it shows you the files that are different between those two commits. In fact, it shows you a screen with only two options: Revert and Diff, and clicking Diff does the really annoying thing of launching the external diff tool serially for each file. It doesn't tell you even how many files it's going to loop through before doing that.
 
