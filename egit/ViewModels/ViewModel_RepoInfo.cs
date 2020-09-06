@@ -9,21 +9,36 @@ using Avalonia.Controls;
 using ReactiveUI;
 using System.Reactive;
 using egit.Engine;
+using egit.Views;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace egit.ViewModels
 {
-    public class ViewModel_RepoInfo : ViewModelBase
+    public class ViewModel_RepoInfo : ViewModelBase, INotifyPropertyChanged
     {
-        public ViewModel_RepoInfo()
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
-            Repos = Settings.Default.LocalRepos?.Cast<string>().ToList();
-            _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
-            Initialized = true;
-            GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private List<string> Repos;
+        public ViewModel_RepoInfo()
+        {
+            _SelectedRepoOrOption = Settings.Default.LastSelectedLocalRepo;
+            Initialized = true;
+            GitEngine.Get().StartTraversingNewRepo(_SelectedRepoOrOption);
+        }
+
         private bool Initialized = false;
+        private View_RepoInfo MyView;
+
+        internal void RegisterView(View_RepoInfo view_RepoInfo)
+        {
+            MyView = view_RepoInfo;
+        }
 
         public GitEngine GitRepoEngine { get { return GitEngine.Get();  } }
 
@@ -31,7 +46,8 @@ namespace egit.ViewModels
         {
             get
             {
-                List<string> temp = Repos.ToList();
+                List<string> temp = Settings.Default.LocalRepos?.Cast<string>().ToList();
+                temp.Sort();
                 temp.Add("Other repo on disk...");
                 return temp;
             }
@@ -46,20 +62,34 @@ namespace egit.ViewModels
             }
             set
             {
-                _SelectedRepoOrOption = value;
-
-                if (_SelectedRepoOrOption.EndsWith("..."))
+                if (value != null)
                 {
-                    var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("TODO", "TODO: need ability to browse to a new repo");
-                    messageBoxStandardWindow.Show();
-                }
-                else
-                {
-                    if (Initialized)
+                    if (value.EndsWith("..."))
                     {
-                        Settings.Default.LastSelectedLocalRepo = _SelectedRepoOrOption;
-                        Settings.Default.Save();
-                        GitEngine.Get().StartTraversingRepo(_SelectedRepoOrOption);
+                        Dispatcher.UIThread.InvokeAsync(async () =>
+                        {
+                            OpenFolderDialog ofd = new OpenFolderDialog();
+                            ofd.Directory = _SelectedRepoOrOption;
+                            string path = await ofd.ShowAsync((Window)MyView.GetVisualRoot());
+                            if (!string.IsNullOrEmpty(path))
+                            {
+                                Settings.Default.LocalRepos.Add(path);
+                                Settings.Default.Save();
+                                OnPropertyChanged("ReposWithOptions");
+                                SelectedRepoOrOption = path;
+                            }
+                        });
+                    }
+                    else
+                    {
+                        _SelectedRepoOrOption = value;
+                        if (Initialized)
+                        {
+                            Settings.Default.LastSelectedLocalRepo = _SelectedRepoOrOption;
+                            Settings.Default.Save();
+                            GitEngine.Get().StartTraversingNewRepo(_SelectedRepoOrOption);
+                        }
+                        OnPropertyChanged();
                     }
                 }
             }
