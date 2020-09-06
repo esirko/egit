@@ -10,6 +10,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -19,6 +20,7 @@ using egit.ViewModels;
 using egit.Views;
 using LibGit2Sharp;
 using MessageBox.Avalonia;
+using Serilog;
 
 namespace egit.Engine
 {
@@ -170,6 +172,10 @@ namespace egit.Engine
         {
             CurrentViewOfCommits = new CommitViewEnumerableWrapper(HandleMainSelectedCommitChanged);
             CurrentlyDisplayedFeatureBranch = new CommitViewEnumerableWrapper(HandleSecondarySelectedCommitChanged);
+            for (int i = 0; i < 4; i++)
+            {
+                AutoResetEvents[i] = new AutoResetEvent(true);
+            }
         }
 
         public CommitViewEnumerableWrapper CurrentViewOfCommits;
@@ -529,50 +535,77 @@ namespace egit.Engine
         private string _SelectedBranch;
         public string SelectedBranch { get { return _SelectedBranch; } set { _SelectedBranch = value; OnPropertyChanged(); } }
 
-
-
         public void StartTraversingRepo(string repoPath)
         {
             if (repoPath != CurrentRepoPath)
             {
-                // TODO: Abort all other current work
+                CurrentRepoPath = repoPath;
+                Task t00 = new Task(async () => { await StartTraversingRepoAsync(); });
+                t00.Start();
+            }
+        }
+
+        CancellationTokenSource CancellationTokenSource = null;
+        AutoResetEvent[] AutoResetEvents = new AutoResetEvent[4];
+
+        void Log(string s)
+        {
+            Debug.WriteLine($"[{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] {s}");
+        }
+
+        private async Task StartTraversingRepoAsync()
+        {
+            if (CancellationTokenSource != null)
+            {
+                CancellationTokenSource.Cancel();
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                AutoResetEvents[i].WaitOne(); // This happens outside the (CancellationTokenSource != null) if-block above because the initial state is true
+            }
+
+            if (Repo != null)
+            {
+                HistoryFS.Clear();
+                UserFS.Clear();
+                Repo.Dispose();
+                Repo = null;
+                CurrentSelectedBranch = null;
+                MasterBranchCommits.Clear();
+                CurrentViewOfCommitsIsHeadBranch = false; // TODO: the way I manage this is very hacky and I did it fast without much thought
+                NumCommitsAnalyzed = 0;
+                CurrentDiffCommit0.SnapshotType = SnapshotType.Unknown;
+                CurrentDiffCommit1.SnapshotType = SnapshotType.Unknown;
+            }
+
+            if (!string.IsNullOrEmpty(CurrentRepoPath))
+            {
+                if (Repository.IsValid(CurrentRepoPath))
+                {
+                    Repo = new Repository(CurrentRepoPath);
+                    CurrentSelectedBranch = Repo.Head;
+                }
+                else
+                {
+                    await MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}").Show();
+                }
 
                 if (Repo != null)
                 {
-                    Repo.Dispose();
-                    Repo = null;
-                    CurrentSelectedBranch = null;
-                    MasterBranchCommits.Clear();
-                    CurrentViewOfCommitsIsHeadBranch = false; // TODO: the way I manage this is very hacky and I did it fast without much thought
-                }
+                    CancellationTokenSource = new CancellationTokenSource();
+                    CancellationToken cancellationToken = CancellationTokenSource.Token;
 
-                CurrentRepoPath = repoPath;
-
-                if (!string.IsNullOrEmpty(CurrentRepoPath))
-                {
-                    if (Repository.IsValid(CurrentRepoPath))
-                    {
-                        Repo = new Repository(CurrentRepoPath); // TODO: this is still in the synchronous path. Should it be asyncified?
-                        CurrentSelectedBranch = Repo.Head;
-                    }
-                    else
-                    {
-                        MessageBoxManager.GetMessageBoxStandardWindow("Bad repo", $"Not a valid repo: {CurrentRepoPath}").Show();
-                    }
-
-                    if (Repo != null)
-                    {
-                        // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
-                        // was in the old code. This propagated to the variables NeedToReloadDiffCache.
-                        Task t0 = new Task(async () => { await RefreshComboBoxBranchesAsync(); });
-                        Task t1 = new Task(async () => { await TraverseHeadBranchAsync(); });
-                        Task t2 = new Task(async () => { await AnalyzeHeadBranchCommitsAsync(); });
-                        Task t3 = new Task(async () => { await DoGitStatusAsync(); });
-                        t0.Start();
-                        t1.Start();
-                        t2.Start();
-                        t3.Start();
-                    }
+                    // TODO: we probably want to use the same code here for traversing a _different_ branch in the _same_ repo. That's what the `newRepo` boolean
+                    // was in the old code. This propagated to the variables NeedToReloadDiffCache.
+                    Task t0 = new Task(async () => { await DoCancelableWork(0, RefreshComboBoxBranchesAsync, cancellationToken); });
+                    Task t1 = new Task(async () => { await DoCancelableWork(1, TraverseHeadBranchAsync, cancellationToken); });
+                    Task t2 = new Task(async () => { await DoCancelableWork(2, AnalyzeHeadBranchCommitsAsync, cancellationToken); });
+                    Task t3 = new Task(async () => { await DoCancelableWork(3, DoGitStatusAsync, cancellationToken); });
+                    t0.Start();
+                    t1.Start();
+                    t2.Start();
+                    t3.Start();
                 }
             }
         }
@@ -585,9 +618,23 @@ namespace egit.Engine
             StatusBarText = $"Branch poll: {Statuses[0]}   /   Branch traversal: {Statuses[1]}   /   Commit analysis: {Statuses[2]}   /   Git status: {Statuses[3]}";
         } 
 
+        private async Task DoCancelableWork(int index, Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await action(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                AutoResetEvents[index].Set();
+            }
+        }
 
 
-        private async Task RefreshComboBoxBranchesAsync()
+        private async Task RefreshComboBoxBranchesAsync(CancellationToken cancellationToken)
         {
             DateTime startTime = DateTime.UtcNow;
             UpdateStatus(0, startTime, "Starting");
@@ -596,7 +643,6 @@ namespace egit.Engine
             string enumeratingBranches = "Enumerating branches...";
             Branches = new List<string>() { enumeratingBranches };
             SelectedBranch = enumeratingBranches;
-
 
             List<string> branches = new List<string>();
             foreach (Branch b in Repo.Branches)
@@ -618,6 +664,7 @@ namespace egit.Engine
                 {
                     //await Task.Delay(30);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
             Branches = branches;
             SelectedBranch = Branches[IndexOfHeadBranch];
@@ -636,7 +683,7 @@ namespace egit.Engine
         }
         */
 
-        private async Task TraverseHeadBranchAsync()
+        private async Task TraverseHeadBranchAsync(CancellationToken cancellationToken)
         {
             DateTime startTime = DateTime.UtcNow;
             UpdateStatus(1, startTime, "Starting");
@@ -755,6 +802,7 @@ namespace egit.Engine
                 {
                     //await Task.Delay(30);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             FlushPendingMasterCommits(ref nn, ref k, ref pendingMasterCommits);
@@ -762,7 +810,7 @@ namespace egit.Engine
             UpdateStatus(1, startTime, "Done");
         }
 
-        private async Task AnalyzeHeadBranchCommitsAsync()
+        private async Task AnalyzeHeadBranchCommitsAsync(CancellationToken cancellationToken)
         {
             DateTime startTime = DateTime.UtcNow;
             UpdateStatus(2, startTime, "Starting");
@@ -804,7 +852,6 @@ namespace egit.Engine
                 {
                     PopulateHistoryFileSystemWithCommit(MasterBranchCommits[i], MasterBranchCommits[i + 1]);
                     NumCommitsAnalyzed = i + 1;
-                    // TODO: use cancellation token here
 
                     numWhileTrueIterations++;
                     UpdateStatus(2, startTime, $"Status: {numWhileTrueIterations}, i0,i,n = ({i0}, {i}, {n})");
@@ -812,6 +859,7 @@ namespace egit.Engine
                     {
                         //await Task.Delay(30);
                     }
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
 
                 i0 = NumCommitsAnalyzed;
@@ -820,8 +868,8 @@ namespace egit.Engine
                 {
                     break;
                 }
-                // TODO: use cancellation token here and everywhere there's a Task.Yield
                 await Task.Yield();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 numWhileTrueIterations++;
             }
@@ -831,7 +879,7 @@ namespace egit.Engine
         }
 
 
-        private async Task DoGitStatusAsync()
+        private async Task DoGitStatusAsync(CancellationToken cancellationToken)
         {
             DateTime startTime = DateTime.UtcNow;
             UpdateStatus(3, startTime, "Starting");
@@ -880,6 +928,7 @@ namespace egit.Engine
                     }
                 }
                 await Task.Yield();
+                cancellationToken.ThrowIfCancellationRequested();
             }
             UpdateStatus(3, startTime, "Done with first part");
 

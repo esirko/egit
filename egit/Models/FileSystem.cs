@@ -53,7 +53,10 @@ namespace egit.Models
         public void Clear()
         {
             EntriesDictionary.Clear();
-            Entries.Clear();
+            Dispatcher.UIThread.Post(() =>
+            {
+                Entries.Clear();
+            });
             History.Clear();
             Parent = null;
         }
